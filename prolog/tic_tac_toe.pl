@@ -1,66 +1,90 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
-set_nth1(1, [_|T], V, [V|T]).
-set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
+% Board representation: 2D list, 3x3
+% state(Board, CurrentPlayer)
+% Board = [[Row1], [Row2], [Row3]]
+% CurrentPlayer = x | o
 
-% state(Board, Player)
-% Board = list of 9 atoms (empty, x, o)
-% Player = x | o
-
-initial_state(state([empty,empty,empty,empty,empty,empty,empty,empty,empty], x)).
+initial_state(state([[empty, empty, empty],
+                     [empty, empty, empty],
+                     [empty, empty, empty]], x)).
 
 current_player(state(_, P), P).
 
-legal_move(state(Board, _), play(Index)) :-
-    between(1, 9, Index),
-    nth1(Index, Board, empty).
+% Generate all legal moves: every empty cell is a valid move
+legal_move(State, move(Row, Col)) :-
+    state(Board, _) = State,
+    between(1, 3, Row),
+    between(1, 3, Col),
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, empty).
 
-apply_move(state(Board, x), play(Index), state(NewBoard, o)) :-
-    nth1(Index, Board, empty),
-    set_nth1(Index, Board, x, NewBoard).
-apply_move(state(Board, o), play(Index), state(NewBoard, x)) :-
-    nth1(Index, Board, empty),
-    set_nth1(Index, Board, o, NewBoard).
+% Apply move: place player's mark at (Row, Col)
+apply_move(state(Board, Player), move(Row, Col), state(NewBoard, NextPlayer)) :-
+    % Check if the move is legal
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, empty),
+    % Update the board
+    set_cell(Row, Col, Board, Player, NewBoard),
+    next_player(Player, NextPlayer).
 
-game_over(state(Board, _), Winner) :-
-    (check_line(Board, 1, 2, 3, Winner)
-    ; check_line(Board, 4, 5, 6, Winner)
-    ; check_line(Board, 7, 8, 9, Winner)
-    ; check_line(Board, 1, 4, 7, Winner)
-    ; check_line(Board, 2, 5, 8, Winner)
-    ; check_line(Board, 3, 6, 9, Winner)
-    ; check_line(Board, 1, 5, 9, Winner)
-    ; check_line(Board, 3, 5, 7, Winner)),
-    Winner \= empty.
+% Set cell helper for 2D lists
+set_cell(Row, Col, Board, Value, NewBoard) :-
+    nth1(Row, Board, OldRow),
+    set_nth1(Col, OldRow, Value, NewRow),
+    set_nth1(Row, Board, NewRow, NewBoard).
+
+set_nth1(1, [_|T], V, [V|T]).
+set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
+
+% Player alternation
+next_player(x, o).
+next_player(o, x).
+
+% Game over: win or draw
+game_over(State, Winner) :-
+    check_win(State, Winner).
 game_over(state(Board, _), draw) :-
-    \+ member(empty, Board),
-    \+ game_over(state(Board, _), _).
+    flatten(Board, FlatBoard),
+    \+ member(empty, FlatBoard),
+    \+ check_win(state(Board, _), _).
 
-check_line(Board, I1, I2, I3, Player) :-
-    nth1(I1, Board, Player),
-    nth1(I2, Board, Player),
-    nth1(I3, Board, Player).
+% Check win conditions
+check_win(state(Board, Player), Player) :-
+    (check_row_win(Board, Player) ;
+     check_col_win(Board, Player) ;
+     check_diag_win(Board, Player)).
 
+% Check rows
+check_row_win([Row|_], Player) :-
+    all_same(Row, Player).
+check_row_win([_|T], Player) :-
+    check_row_win(T, Player).
+
+all_same([X,X,X], X).
+
+% Check columns
+check_col_win(Board, Player) :-
+    between(1, 3, Col),
+    maplist(nth1(Col), Board, Column),
+    all_same(Column, Player).
+
+% Check diagonals
+check_diag_win(Board, Player) :-
+    nth1(1, Board, Row1), nth1(1, Row1, Player),
+    nth1(2, Board, Row2), nth1(2, Row2, Player),
+    nth1(3, Board, Row3), nth1(3, Row3, Player).
+
+check_diag_win(Board, Player) :-
+    nth1(1, Board, Row1), nth1(3, Row1, Player),
+    nth1(2, Board, Row2), nth1(2, Row2, Player),
+    nth1(3, Board, Row3), nth1(1, Row3, Player).
+
+% Render the board
 render_state(state(Board, Player)) :-
     format("Current player: ~w~n", [Player]),
-    format("+---+---+---+~n"),
-    nth1(1, Board, S1), nth1(2, Board, S2), nth1(3, Board, S3),
-    format("| ~w | ~w | ~w |~n", [symbol(S1), symbol(S2), symbol(S3)]),
-    format("+---+---+---+~n"),
-    nth1(4, Board, S4), nth1(5, Board, S5), nth1(6, Board, S6),
-    format("| ~w | ~w | ~w |~n", [symbol(S4), symbol(S5), symbol(S6)]),
-    format("+---+---+---+~n"),
-    nth1(7, Board, S7), nth1(8, Board, S8), nth1(9, Board, S9),
-    format("| ~w | ~w | ~w |~n", [symbol(S7), symbol(S8), symbol(S9)]),
-    format("+---+---+---+~n").
-
-symbol(empty) :- write(' ').
-symbol(X) :- X \= empty, write(X).
-
-% ==== QUERY REFERENCE ====
-% ?- initial_state(S).
-% ?- initial_state(S), current_player(S, P).
-% ?- initial_state(S), legal_move(S, M).
-% ?- initial_state(S), apply_move(S, play(5), S2), render_state(S2).
-% ?- initial_state(S), game_over(S, W).
+    forall(member(Row, Board),
+           (forall(member(Cell, Row),
+                   (Cell = empty -> format(" . ") ; format(" ~w ", [Cell]))),
+            nl)).
