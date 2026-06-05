@@ -10,7 +10,7 @@ from tempfile import NamedTemporaryFile
 # ================================================================
 # Constraints & Restrictions
 # ================================================================
-SYSTEM_PROLOG_GENERATOR = """\
+SYSTEM_PROLOG_GENERATOR = r"""\
 You are an expert SWI-Prolog developer. You implement games in SWI-Prolog from structured JSON.
 
 OUTPUT FORMAT:
@@ -164,46 +164,65 @@ def _build_prolog_fix_prompt(structured_json : dict, broken_code : str, errors: 
         + json.dumps(structured_json, indent=2)
     )
 
-def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
+
+def _validate_prolog(prolog_code: str) -> tuple[bool, list[str]]:
     errors = []
-    
+
     with NamedTemporaryFile(suffix=".pl", mode="w", delete=False, encoding="utf-8") as f:
         f.write(prolog_code)
         tmp = f.name
-    
-    def run(goal : str) -> subprocess.CompletedProcess:
+
+    def run(goal: str, timeout: int = None) -> subprocess.CompletedProcess:
+        if timeout is None:
+            timeout = config.SWIPL_TIMEOUT
         return subprocess.run(
             ["swipl", "-g", goal, "-t", "halt(1)", tmp],
-            capture_output=True, text=True, timeout=config.SWIPL_TIMEOUT
+            capture_output=True, text=True, timeout=timeout
         )
-    
+
     # Check 1: Load
-    r = run("halt")
-    
+    print("  - Checking file load...")
+    r = run("halt", timeout=30)
+
     if r.returncode != 0:
         errors.append(f"[Load error]\n{r.stderr.strip()}")
         os.unlink(tmp)
         return False, errors
-    
+
     # Check 2: initial_state/1
-    r = run("(initial_state(_) -> halt(0) ; halt(1))")
-    
-    if r.returncode != 0:
-        errors.append("[initial_state/1] Did not succeed.")
-    
-    # Check 3: legal_move/2
-    r = run("(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))")
-    
-    if r.returncode != 0:
-        errors.append("[legal_move/2] No legal moves from initial state.")
-    
+    print("  - Checking initial_state/1...")
+    try:
+        r = run("(initial_state(_) -> halt(0) ; halt(1))", timeout=30)
+        if r.returncode != 0:
+            errors.append("[initial_state/1] Did not succeed.")
+    except subprocess.TimeoutExpired:
+        errors.append("[initial_state/1] Timed out - predicate may be too slow or infinite loop.")
+
+    # Check 3: legal_move/2 - This is often the slow part
+    print("  - Checking legal_move/2 (this may take a while for complex games)...")
+    try:
+        r = run("(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))", timeout=config.SWIPL_TIMEOUT)
+        if r.returncode != 0:
+            errors.append("[legal_move/2] No legal moves from initial state.")
+    except subprocess.TimeoutExpired:
+        errors.append("[legal_move/2] Timed out - move generation is too slow or infinite loop.")
+
     # Check 4: apply_move/3
-    r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, _) -> halt(0) ; halt(1))")
-    
-    if r.returncode != 0:
-        errors.append("[apply_move/3] Failed on first legal move from initial state.")
-    
+    print("  - Checking apply_move/3...")
+    try:
+        r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, _) -> halt(0) ; halt(1))", timeout=30)
+        if r.returncode != 0:
+            errors.append("[apply_move/3] Failed on first legal move from initial state.")
+    except subprocess.TimeoutExpired:
+        errors.append("[apply_move/3] Timed out - move application is too slow.")
+
     os.unlink(tmp)
+
+    if errors:
+        print(f"  Validation found {len(errors)} errors.")
+    else:
+        print("  Validation passed!")
+
     return len(errors) == 0, errors
 # ================================================================
 
