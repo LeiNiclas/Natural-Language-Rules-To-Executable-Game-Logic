@@ -3,7 +3,7 @@ import json
 import os
 import subprocess
 
-from ollama import Client
+from llm_client import chat
 from tempfile import NamedTemporaryFile
 
 
@@ -211,18 +211,17 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
 # Public endpoints
 # ================================================================
 def generate_prolog(structured_json : dict) -> str:
-    client = Client()
-    system_msg = {"role": "system", "content": SYSTEM_PROLOG_GENERATOR + "\n\n" + FEW_SHOT_PROLOG}
+    system_msg = SYSTEM_PROLOG_GENERATOR + "\n\n" + FEW_SHOT_PROLOG
     code = None
     errors = None
     
     for attempt in range(1, config.PROLOG_MAX_RETRIES + 1):
         if attempt == 1:
-            user_msg = {"role": "user", "content": _build_prolog_prompt(structured_json)}
+            user_msg = _build_prolog_prompt(structured_json)
         else:
-            user_msg = {"role": "user", "content": _build_prolog_fix_prompt(structured_json, code, errors)}
+            user_msg = _build_prolog_fix_prompt(structured_json, code, errors)
         
-        code = client.chat(config.MODEL_PROLOG_GENERATOR, messages=[system_msg, user_msg]).message.content
+        code = chat(config.BACKEND_PROLOG_GENERATOR, config.MODEL_PROLOG_GENERATOR, messages=[system_msg, user_msg])
         
         if code.strip().startswith("```"):
             lines = code.strip().splitlines()

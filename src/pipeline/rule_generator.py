@@ -1,7 +1,7 @@
 import config
 import json
 
-from ollama import Client
+from llm_client import chat
 
 # ================================================================
 # Constraints & Restrictions
@@ -91,25 +91,19 @@ def _build_json_structurer_prompt(rulebook : str) -> str:
 # Public endpoints
 # ================================================================
 def generate_rulebook(user_input : str) -> str:
-    client = Client()
-    messages = [
-        {"role": "system", "content": SYSTEM_RULE_GENERATOR},
-        {"role": "user",   "content": _build_rule_generator_prompt(user_input)}
-    ]
+    system_msg = SYSTEM_RULE_GENERATOR
+    user_msg = _build_rule_generator_prompt(user_input)
     
-    response = client.chat(config.MODEL_RULE_GENERATOR, messages=messages).message.content
+    response = chat(config.BACKEND_RULE_GENERATOR, config.MODEL_RULE_GENERATOR, messages=[system_msg, user_msg])
     
     return response
 
 
 def verify_rulebook(user_input : str, rulebook : str) -> bool:
-    client = Client()
-    messages = [
-        {"role": "system", "content": SYSTEM_RULE_VERIFIER},
-        {"role": "user",   "content": _build_rule_verifier_prompt(user_input, rulebook)}
-    ]
+    system_msg = SYSTEM_RULE_VERIFIER
+    user_msg = _build_rule_verifier_prompt(user_input, rulebook)
     
-    response = client.chat(config.MODEL_RULE_VERIFIER, messages=messages).message.content
+    response = chat(config.BACKEND_RULE_VERIFIER, config.MODEL_RULE_VERIFIER, messages=[system_msg, user_msg])
     
     if not response.strip().endswith("INVALID") and response.strip().endswith("VALID"):
         return True
@@ -118,13 +112,10 @@ def verify_rulebook(user_input : str, rulebook : str) -> bool:
 
 
 def rulebook_to_json(rulebook : str) -> tuple[bool, dict | None]:
-    client = Client()
-    messages = [
-        {"role": "system", "content": SYSTEM_JSON_STRUCTURER},
-        {"role": "user",   "content": _build_json_structurer_prompt(rulebook)}
-    ]
+    system_msg = SYSTEM_JSON_STRUCTURER
+    user_msg = _build_json_structurer_prompt(rulebook)
     
-    response = client.chat(config.MODEL_JSON_STRUCTURER, messages=messages).message.content
+    response = chat(config.BACKEND_JSON_STRUCTURER, config.MODEL_JSON_STRUCTURER, messages=[system_msg, user_msg])
     
     try:
         parsed = json.loads(response)
