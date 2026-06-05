@@ -26,19 +26,22 @@ def _init_state():
             st.session_state[k] = v
 
 
-def _run_pipeline(user_input : str):
+def _run_pipeline(user_input : str, skip_rulebook : bool = False):
     st.session_state["phase"] = "generating"
     
     with st.status("Generating game...", expanded=True) as status:
-        st.write("Generating rulebook...")
-        rulebook = rule_gen.generate_rulebook(user_input)
+        if skip_rulebook:
+            rulebook = user_input
+        else:
+            st.write("Generating rulebook...")
+            rulebook = rule_gen.generate_rulebook(user_input)
         
-        st.write("Verifying rulebook...")
+            st.write("Verifying rulebook...")
         
-        if not rule_gen.verify_rulebook(user_input, rulebook):
-            status.update(label="Rulebook verification failed.", state="error")
-            st.session_state["phase"] = "input"
-            return
+            if not rule_gen.verify_rulebook(user_input, rulebook):
+                status.update(label="Rulebook verification failed.", state="error")
+                st.session_state["phase"] = "input"
+                return
 
         st.write("Structuring rules as JSON...")
         ok, structured = rule_gen.rulebook_to_json(rulebook)
@@ -127,19 +130,37 @@ def _handle_move(move : str):
         st.session_state["phase"] = "game_over"
     else:
         st.session_state["legal_moves"] = engine.get_legal_moves(pl_file, new_state)
+    
+    st.rerun()
 
 
 
 def _render_input_phase():
     st.subheader("What game would you like to play?")
-
-    user_input = st.text_input(
-        label="game_input",
-        label_visibility="hidden",
-        placeholder='e.g. "Give me the rules for Tic-Tac-Toe"',
-    )
-    if st.button("Generate Game", disabled=not user_input):
-        _run_pipeline(user_input)
+    
+    tab_name, tab_rules = st.tabs(["By Name", "By Rules"])
+    
+    with tab_name:
+        user_input = st.text_input(
+            label="game_input",
+            label_visibility="hidden",
+            placeholder="e.g. Tic-Tac-Toe"
+        )
+        
+        if st.button("Generate Game", disabled=not user_input):
+            _run_pipeline(user_input, skip_rulebook=False)
+            
+    with tab_rules:
+        custom_rules = st.text_area(
+            label="custom_rules",
+            label_visibility="hidden",
+            placeholder="How do you play your game?",
+            height=300
+        )
+        
+        if st.button("Generate from Rules", disabled=not custom_rules):
+            _run_pipeline(custom_rules, skip_rulebook=True)
+    
 
     st.divider()
     st.markdown("**Or upload an existing Prolog file**")

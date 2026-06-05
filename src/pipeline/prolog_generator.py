@@ -3,7 +3,7 @@ import json
 import os
 import subprocess
 
-from llm_client import chat
+from src.llm_client import chat
 from tempfile import NamedTemporaryFile
 
 

@@ -1,16 +1,19 @@
 import os
+from dotenv import load_dotenv
 
 # Model selection
+load_dotenv()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 
+
 BACKEND_RULE_GENERATOR  = "ollama"
-MODEL_RULE_GENERATOR    = "gemma4"
+MODEL_RULE_GENERATOR    = "gemma4:31b-cloud"
 
 BACKEND_RULE_VERIFIER   = "ollama"
-MODEL_RULE_VERIFIER     = "gemma4"
+MODEL_RULE_VERIFIER     = "gemma4:31b-cloud"
 
 BACKEND_JSON_STRUCTURER = "ollama"
-MODEL_JSON_STRUCTURER   = "gemma4"
+MODEL_JSON_STRUCTURER   = "gemma4:31b-cloud"
 
 BACKEND_PROLOG_GENERATOR    = "openai"
 MODEL_PROLOG_GENERATOR      = "gpt-4o" # qwen3-coder:480b-cloud

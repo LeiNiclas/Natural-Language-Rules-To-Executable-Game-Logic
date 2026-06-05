@@ -1,7 +1,7 @@
 import config
 import json
 
-from llm_client import chat
+from src.llm_client import chat
 
 # ================================================================
 # Constraints & Restrictions
