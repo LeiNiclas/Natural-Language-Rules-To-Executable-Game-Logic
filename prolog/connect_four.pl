@@ -1,98 +1,164 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
-% 2D board representation: list of 6 rows, each a list of 7 atoms (empty, red, yellow)
-
+% Helper to set Nth element in list
 set_nth1(1, [_|T], V, [V|T]).
 set_nth1(N, [H|T], V, [H|R]) :-
     N > 1,
     N1 is N-1,
     set_nth1(N1, T, V, R).
 
+% Helper to set cell at (Row,Col) in 2D board
 set_cell(Row, Col, Board, Value, NewBoard) :-
     nth1(Row, Board, OldRow),
     set_nth1(Col, OldRow, Value, NewRow),
     set_nth1(Row, Board, NewRow, NewBoard).
 
-initial_state(state(Board, red)) :-
-    Row = [empty, empty, empty, empty, empty, empty, empty],
-    Board = [Row, Row, Row, Row, Row, Row].
+% Check column is between 1 and 7
+column_in_range(Column) :-
+    between(1, 7, Column).
 
+% Check top cell of column is empty
+column_not_full(Board, Column) :-
+    nth1(1, Board, TopRow),
+    nth1(Column, TopRow, empty).
+
+% Find drop row by scanning from bottom (6) upwards
+find_drop_row(Board, Column, Row) :-
+    find_drop_row(6, Board, Column, Row).
+find_drop_row(0, _, _, _) :- fail.
+find_drop_row(R, Board, Column, R) :-
+    nth1(R, Board, RowList),
+    nth1(Column, RowList, empty), !.
+find_drop_row(R, Board, Column, Row) :-
+    R1 is R - 1,
+    find_drop_row(R1, Board, Column, Row).
+
+% Update board at position with player's disc
+update_board(Board, Row, Column, Player, NewBoard) :-
+    set_cell(Row, Column, Board, Player, NewBoard).
+
+% Alternate players
+next_player(red, yellow).
+next_player(yellow, red).
+
+% Check four consecutive in a list
+consecutive_four([A,B,C,D|_], Player) :-
+    A == Player,
+    B == Player,
+    C == Player,
+    D == Player.
+consecutive_four([_|T], Player) :-
+    consecutive_four(T, Player).
+
+% Extract column list
+get_column(Board, Col, ColList) :-
+    findall(Cell, (nth1(_, Board, Row), nth1(Col, Row, Cell)), ColList).
+
+% Extract descending diagonal from start
+get_diag_desc(Board, Row, Col, [Cell|Rest]) :-
+    Row =< 6,
+    Col =< 7,
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, Cell),
+    R1 is Row + 1,
+    C1 is Col + 1,
+    get_diag_desc(Board, R1, C1, Rest).
+get_diag_desc(_, Row, Col, []) :-
+    (Row > 6 ; Col > 7).
+
+% Extract ascending diagonal from start
+get_diag_asc(Board, Row, Col, [Cell|Rest]) :-
+    Row >= 1,
+    Col =< 7,
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, Cell),
+    R1 is Row - 1,
+    C1 is Col + 1,
+    get_diag_asc(Board, R1, C1, Rest).
+get_diag_asc(_, Row, Col, []) :-
+    (Row < 1 ; Col > 7).
+
+% Check horizontal win
+four_consecutive_horizontal(Board, Player) :-
+    member(RowList, Board),
+    consecutive_four(RowList, Player).
+
+% Check vertical win
+four_consecutive_vertical(Board, Player) :-
+    between(1, 7, Col),
+    get_column(Board, Col, ColList),
+    consecutive_four(ColList, Player).
+
+% Check descending diagonal win
+four_consecutive_diagonal_desc(Board, Player) :-
+    between(1, 3, Row),
+    between(1, 4, Col),
+    get_diag_desc(Board, Row, Col, Diag),
+    consecutive_four(Diag, Player).
+
+% Check ascending diagonal win
+four_consecutive_diagonal_asc(Board, Player) :-
+    between(4, 6, Row),
+    between(1, 4, Col),
+    get_diag_asc(Board, Row, Col, Diag),
+    consecutive_four(Diag, Player).
+
+% Check if board is full (no empties)
+board_full(Board) :-
+    \+ ( member(Row, Board), member(empty, Row) ).
+
+% Initial game state
+initial_state(state([
+    [empty,empty,empty,empty,empty,empty,empty],
+    [empty,empty,empty,empty,empty,empty,empty],
+    [empty,empty,empty,empty,empty,empty,empty],
+    [empty,empty,empty,empty,empty,empty,empty],
+    [empty,empty,empty,empty,empty,empty,empty],
+    [empty,empty,empty,empty,empty,empty,empty]
+], red)).
+
+% Get current player
 current_player(state(_, P), P).
 
-legal_move(state(Board, _), move(Col)) :-
-    between(1, 7, Col),
-    get_cell(Board, 1, Col, empty).
+% Enumerate legal moves
+legal_move(state(Board, _), move(Column)) :-
+    column_in_range(Column),
+    column_not_full(Board, Column).
 
-apply_move(state(Board, Player), move(Col), state(NewBoard, Next)) :-
-    between(1, 7, Col),
-    get_cell(Board, 1, Col, empty),
-    drop_disc(Board, Col, Player, NewBoard),
-    switch_player(Player, Next).
+% Apply a move to the state
+apply_move(state(Board, Player), move(Column), state(NewBoard, Next)) :-
+    column_in_range(Column),
+    column_not_full(Board, Column),
+    find_drop_row(Board, Column, Row),
+    update_board(Board, Row, Column, Player, NewBoard),
+    next_player(Player, Next).
 
-game_over(state(Board, _), Winner) :-
-    four_in_a_row(Board, Winner).
+% Check for game over by win
+game_over(state(Board, Current), Winner) :-
+    next_player(Winner, Current),
+    (
+        four_consecutive_horizontal(Board, Winner)
+    ;   four_consecutive_vertical(Board, Winner)
+    ;   four_consecutive_diagonal_desc(Board, Winner)
+    ;   four_consecutive_diagonal_asc(Board, Winner)
+    ), !.
 
+% Check for game over by draw
 game_over(state(Board, _), draw) :-
-    \+ (member(Row, Board), member(empty, Row)),
-    \+ four_in_a_row(Board, red),
-    \+ four_in_a_row(Board, yellow).
+    board_full(Board).
 
+% Render the board and current player
 render_state(state(Board, Player)) :-
-    format("Current player: ~w~n", [Player]),
-    maplist(render_row, Board).
+    maplist(render_row, Board),
+    format("Player to move: ~w~n", [Player]).
 
+% Render a single row
 render_row(Row) :-
     maplist(render_cell, Row),
     nl.
 
-render_cell(empty) :- format(".").
-render_cell(red) :- format("R").
-render_cell(yellow) :- format("Y").
-
-get_cell(Board, Row, Col, Cell) :-
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, Cell).
-
-column_full(Board, Col) :-
-    get_cell(Board, 1, Col, Cell),
-    Cell \= empty.
-
-drop_disc(Board, Col, Player, NewBoard) :-
-    findall(R, (between(1, 6, R), get_cell(Board, R, Col, empty)), Rows),
-    last(Rows, Row),
-    set_cell(Row, Col, Board, Player, NewBoard).
-
-switch_player(red, yellow).
-switch_player(yellow, red).
-
-check_horizontal(RowList, P) :-
-    append(_, [P, P, P, P | _], RowList).
-
-check_vertical(Board, Col, P) :-
-    findall(Cell, (between(1, 6, R), get_cell(Board, R, Col, Cell)), ColList),
-    check_horizontal(ColList, P).
-
-check_diagonal_neg(Board, P) :-
-    between(1, 3, R),
-    between(1, 4, C),
-    get_cell(Board, R, C, P),
-    R1 is R+1, C1 is C+1, get_cell(Board, R1, C1, P),
-    R2 is R+2, C2 is C+2, get_cell(Board, R2, C2, P),
-    R3 is R+3, C3 is C+3, get_cell(Board, R3, C3, P).
-
-check_diagonal_pos(Board, P) :-
-    between(1, 3, R),
-    between(4, 7, C),
-    get_cell(Board, R, C, P),
-    R1 is R+1, C1 is C-1, get_cell(Board, R1, C1, P),
-    R2 is R+2, C2 is C-2, get_cell(Board, R2, C2, P),
-    R3 is R+3, C3 is C-3, get_cell(Board, R3, C3, P).
-
-four_in_a_row(Board, P) :-
-    P \= empty,
-    (   member(Row, Board), check_horizontal(Row, P)
-    ;   between(1, 7, C), check_vertical(Board, C, P)
-    ;   check_diagonal_neg(Board, P)
-    ;   check_diagonal_pos(Board, P)
-    ).
+% Render a single cell
+render_cell(empty) :- format(". ").
+render_cell(red) :- format("R ").
+render_cell(yellow) :- format("Y ").
