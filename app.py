@@ -22,7 +22,9 @@ def _init_state():
         "winner":           None,
         "prolog_code":      None,
         "structured_json":  None,
-        "design_plan":      None
+        "design_plan":      None,
+        "pipeline_outputs": {},
+        "show_pipeline_output": False,
     }
     
     for k, v in defaults.items():
@@ -39,16 +41,20 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False):
         else:
             st.write("Generating rulebook...")
             rulebook = rule_gen.generate_rulebook(user_input)
+            st.session_state["pipeline_outputs"]["rulebook"] = rulebook
         
             st.write("Verifying rulebook...")
+            verification = rule_gen.verify_rulebook(user_input, rulebook)
+            st.session_state["pipeline_outputs"]["verification"] = verification 
         
-            if not rule_gen.verify_rulebook(user_input, rulebook):
+            if not verification:
                 status.update(label="Rulebook verification failed.", state="error")
                 st.session_state["phase"] = "input"
                 return
 
         st.write("Structuring rules as JSON...")
         ok, structured = rule_gen.rulebook_to_json(rulebook)
+        st.session_state["pipeline_outputs"]["structured_json"] = structured
         
         if not ok:
             status.update(label="Could not parse structured JSON.", state="error")
@@ -57,6 +63,8 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False):
         
         st.write("Generating Prolog code...")
         code, design_plan = prolog_gen.generate_prolog(structured)
+        st.session_state["pipeline_outputs"]["design_plan"] = design_plan
+        st.session_state["pipeline_outputs"]["prolog_code"] = code
         
         if code is None:
             status.update(label="Prolog generation failed after all retries.", state="error")
@@ -92,6 +100,12 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False):
     st.session_state["move_history"]    = []
     st.session_state["winner"]          = None
     st.session_state["phase"]           = "playing"
+    
+    if st.session_state["show_pipeline_output"]:
+        st.session_state["phase"] = "pipeline_review"
+    else:
+        st.session_state["phase"] = "playing"
+    
     st.rerun()
 
 
@@ -175,6 +189,11 @@ def _render_input_phase():
             _run_pipeline(custom_rules, skip_rulebook=True)
     
 
+    st.session_state["show_pipeline_output"] = st.checkbox(
+        "Show generation details",
+        value=st.session_state["show_pipeline_output"]
+    )
+    
     st.divider()
     st.markdown("**Or upload an existing Prolog file**")
 
@@ -187,6 +206,41 @@ def _render_input_phase():
     if st.button("Load File", disabled=not (uploaded_file and upload_name)):
         _load_from_file(uploaded_file, upload_name)
 
+
+def _render_pipeline_outputs():
+    st.subheader("Pipeline Output")
+    outputs = st.session_state["pipeline_outputs"]
+
+    if "rulebook" in outputs:
+        with st.expander("Rulebook"):
+            st.text(outputs["rulebook"])
+
+    if "verification" in outputs:
+        with st.expander("Verification"):
+            st.text(outputs["verification"])
+
+    if "structured_json" in outputs and outputs["structured_json"]:
+        with st.expander("Structured JSON"):
+            st.json(outputs["structured_json"])
+
+    if "design_plan" in outputs and outputs["design_plan"]:
+        with st.expander("Design Plan"):
+            st.text(outputs["design_plan"])
+
+    if "prolog_code" in outputs and outputs["prolog_code"]:
+        with st.expander("Prolog Code"):
+            st.code(outputs["prolog_code"], language="prolog")
+
+
+def _render_pipeline_review_phase():
+    st.subheader("Generation complete")
+    _render_pipeline_outputs()
+    
+    st.divider()
+    
+    if st.button("Continue to game"):
+        st.session_state["phase"] = "playing"
+        st.rerun()
 
 
 def _render_playing_phase():
@@ -284,6 +338,8 @@ def main():
         _render_input_phase()
     elif phase == "generating":
         _render_input_phase()
+    elif phase == "pipeline_review":
+        _render_pipeline_review_phase()
     elif phase == "playing":
         _render_playing_phase()
     elif phase == "game_over":
