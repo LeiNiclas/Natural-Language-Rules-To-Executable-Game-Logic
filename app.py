@@ -317,13 +317,30 @@ def _render_game_over_phase():
     
     if st.session_state["move_history"]:
         st.markdown("**Move history**")
-        st.dataframe(st.session_state["move_history"], use_container_width=True)
+        st.dataframe(st.session_state["move_history"], width="stretch")
     
-    if st.button("Play again"):
-        for key in ["phase", "pl_file", "game_name", "state", "legal_moves", "move_history", "winner", "chosen_move"]:
-            if key in st.session_state:
-                del st.session_state[key]
-
+    col_again, col_menu = st.columns(2)
+    
+    with col_again:
+        if st.button("Play again"):
+            initial = engine.get_initial_state(st.session_state["pl_file"])
+            st.session_state["state"]           = initial
+            st.session_state["legal_moves"]     = engine.get_legal_moves(st.session_state["pl_file"], initial)
+            st.session_state["move_history"]    = []
+            st.session_state["winner"]          = None
+            st.session_state["phase"]           = "playing"
+            
+            if "chosen_move" in st.session_state:
+                del st.session_state["chosen_move"]
+            
+            st.rerun()
+    
+    with col_menu:
+        if st.button("Back to Menu"):
+            for key in ["phase", "pl_file", "game_name", "state", "legal_moves", "move_history", "winner", "chosen_move"]:
+                if key in st.session_state:
+                    del st.session_state[key]
+        
         st.rerun()
 
 
