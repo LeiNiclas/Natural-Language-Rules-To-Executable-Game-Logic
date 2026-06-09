@@ -77,6 +77,11 @@ RENDER STATE:
     RIGHT: (C = empty -> format('.') ; format('~w', [C]))
   - NEVER print the word 'empty' on the board.
   - NEVER wrap atoms in a functor like symbol/1 or cell/1.
+  - NEVER print full player names on the board. Use single-character abbreviations only.
+    RIGHT: (C = player1 -> format('P1') ; (C = player2 -> format('P2') ; format('.')))
+    RIGHT: (C = yellow -> format('Y') ; (C = red -> format('R') ; format('.')))
+    WRONG: format('~w', [player1]) % prints 'player1' - too long. 
+  - IMPORTANT: Always make sure there's a space between each entry.
 """
 
 FEW_SHOT_PROLOG = """\
@@ -239,11 +244,23 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
         os.unlink(tmp)
         return False, errors
     
-    # Check 2: initial_state/1
+    # Check 2a: initial_state/1
     r = run("(initial_state(_) -> halt(0) ; halt(1))")
     
     if r.returncode != 0:
         errors.append("[initial_state/1] Did not succeed.")
+    
+    # Check 2b: initial_state produces a fully ground term
+    r = run("(initial_state(S), ground(S) -> halt(0) ; halt(1))")
+    
+    if r.returncode != 0:
+        errors.append(
+            "[initial_state/1] State contains unbound variables. "
+            "Use explicit list literals instead of maplist/length to initialize boards. "
+            "Example: Board = [empty,empty,empty,...] with exact length."
+        )
+        os.unlink(tmp)
+        return False, errors
     
     # Check 3: legal_move/2
     r = run("(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))")
@@ -287,19 +304,14 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
         errors.append("[game_over/2] Predicate is not defined.")
     
     # Check 8: Unbound variables in state after apply_move
-    goal = """
-        initial_state(S),
-        legal_move(S, M),
-        apply_move(S, M, S2),
-        term_to_atom(S2, A),
-        atom_string(A, Str),
-        (sub_string(Str, _, _, _, \"_G\") -> halt(1) ; halt(0))
-    """.replace("\n", " ").strip()
-    
-    r = run(goal)
+    r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, S2), ground(S2) -> halt(0) ; halt(1))")
     
     if r.returncode != 0:
-        errors.append("[apply_move/3] New state contains unbound variables (_G...).")
+        errors.append(
+            "[apply_move/3] New state contains unbound variables. "
+            "All state fields must be fully instantiated after a move. "
+            "Check that every field in NewState is explicitly set."
+        )
     
     os.unlink(tmp)
     return len(errors) == 0, errors

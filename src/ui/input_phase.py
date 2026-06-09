@@ -22,9 +22,10 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
             if not ok:
                 status.update(label="Rulebook generation failed after all retries.", state="error")
                 st.session_state["phase"] = "input"
+                st.session_state["pipeline_failed"] = True
                 return
         
-        status.update(label="Rules are looking good...")
+        status.update(label="Rules are looking good...", expanded=True)
         st.write("Structuring rules as JSON...")
         ok, structured = rule_gen.rulebook_to_json(rulebook)
         st.session_state["pipeline_outputs"]["structured_json"] = structured
@@ -32,9 +33,10 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
         if not ok:
             status.update(label="Could not parse structured JSON.", state="error")
             st.session_state["phase"] = "input"
+            st.session_state["pipeline_failed"] = True
             return
         
-        status.update(label="Working on the prolog code...")
+        status.update(label="Working on the prolog code...", expanded=True)
         st.write("Generating prolog code...")
         code, design_plan = prolog_gen.generate_prolog(structured)
         st.session_state["pipeline_outputs"]["design_plan"] = design_plan
@@ -43,6 +45,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
         if code is None:
             status.update(label="Prolog generation failed after all retries.", state="error")
             st.session_state["phase"] = "input"
+            st.session_state["pipeline_failed"] = True
             return
         
         game_name = structured.get("game_name", user_input)
@@ -58,12 +61,13 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
         st.session_state["design_plan"] = design_plan
         
         status.update(label="Game ready!", state="complete")
-        
+    
     initial = engine.get_initial_state(pl_file)
     
     if initial is None:
         st.error("Could not retrieve initial game state from Prolog")
         st.session_state["phase"] = "input"
+        st.session_state["pipeline_failed"] = True
         return
 
     st.session_state["pl_file"] = pl_file
@@ -162,6 +166,14 @@ def render():
         _render_settings_popover()
     
     st.divider()
+    
+    if st.session_state["pipeline_failed"]:
+        if st.button("Show generation details"):
+            st.session_state["pipeline_failed"] = False
+            st.session_state["phase"] = "pipeline_review"
+            st.rerun()
+        
+        st.divider()
     
     tab_name, tab_rules = st.tabs(["By name", "By rules"])
     

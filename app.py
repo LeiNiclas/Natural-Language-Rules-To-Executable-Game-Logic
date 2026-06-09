@@ -21,7 +21,8 @@ def _init_state():
         "design_plan": None,
         "pipeline_outputs": {},
         "show_pipeline_output": False,
-        "use_design_plan": True
+        "use_design_plan": True,
+        "pipeline_failed": False
     }
     
     for k, v in defaults.items():
