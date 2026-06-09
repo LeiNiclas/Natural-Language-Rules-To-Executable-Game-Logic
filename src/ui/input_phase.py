@@ -16,16 +16,11 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
             rulebook = user_input
         else:
             st.write("Generating rulebook...")
-            rulebook = rule_gen.generate_rulebook(user_input)
+            ok, rulebook = rule_gen.generate_rulebook(user_input)
             st.session_state["pipeline_outputs"]["rulebook"] = rulebook
-            status.update(label="Validating the rules...")
             
-            st.write("Verifying rulebook...")
-            verification = rule_gen.verify_rulebook(user_input, rulebook)
-            st.session_state["pipeline_outputs"]["verification"] = verification
-            
-            if not verification:
-                status.update(label="Rulebook verification failed.", state="error")
+            if not ok:
+                status.update(label="Rulebook generation failed after all retries.", state="error")
                 st.session_state["phase"] = "input"
                 return
         
@@ -39,7 +34,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
             st.session_state["phase"] = "input"
             return
         
-        status.update(label="Making a design plan for the game...")
+        status.update(label="Working on the prolog code...")
         st.write("Generating prolog code...")
         code, design_plan = prolog_gen.generate_prolog(structured)
         st.session_state["pipeline_outputs"]["design_plan"] = design_plan
@@ -50,7 +45,6 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
             st.session_state["phase"] = "input"
             return
         
-        status.update(label="Game code is being generated...")
         game_name = structured.get("game_name", user_input)
         safe_name = game_name.lower().replace(" ", "_")
         tmp_dir = tempfile.mkdtemp()

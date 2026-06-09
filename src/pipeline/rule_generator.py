@@ -20,13 +20,22 @@ SYSTEM_RULE_GENERATOR = (
     "If the user message does not name a recognizable game, ask for clarification instead."
 )
 
-# Stage 2: Rule verifier
+# Stage 2a: Rule verifier
 SYSTEM_RULE_VERIFIER = (
     "You are a document reviewer who verifies whether a rulebook correctly and completely"
     "describes the requested game.\n"
     "Point out any errors or missing aspects. "
     "End your response with exactly one of these tokens on its own line: VALID | INVALID\n"
     "Do not use any text styling."
+)
+
+# Stage 2b: Rule fixer
+SYSTEM_RULE_FIXER = (
+    "You are an expert in physical games who corrects and completes game rulebooks.\n"
+    "You will receive a rulebook and feedback pointing out errors or missing aspects.\n"
+    "Output format: GAME NAME\n\n1. Rule 1\n2. Rule 2\n...\n"
+    "Do not use any text styling.\n"
+    "Fix all issues mentioned in the feedback and return the complete corrected rulebook."
 )
 
 # Stage 3: JSON structurer
@@ -83,6 +92,16 @@ def _build_rule_verifier_prompt(original_request : str, rulebook : str) -> str:
     )
 
 
+def _build_rule_fixer_prompt(user_input : str, rulebook : str, feedback : str) -> str:
+    return (
+        UNIVERSAL_CONSTRAINT
+        + f"Original request: '{user_input}'\n\n"
+        + f"Rulebook with errors:\n{rulebook}\n\n"
+        + f"Reviewer feedback:\n{feedback}\n\n"
+        + "Fix all issues and return the complete corrected rulebook."
+    )
+
+
 def _build_json_structurer_prompt(rulebook : str) -> str:
     return UNIVERSAL_CONSTRAINT + "Structure this rulebook:\n\n" + rulebook
 # ================================================================
@@ -90,25 +109,38 @@ def _build_json_structurer_prompt(rulebook : str) -> str:
 # ================================================================
 # Public endpoints
 # ================================================================
-def generate_rulebook(user_input : str) -> str:
+def generate_rulebook(user_input : str) -> tuple[bool, str]:
     system_msg = SYSTEM_RULE_GENERATOR
     user_msg = _build_rule_generator_prompt(user_input)
     
     response = chat(config.BACKEND_RULE_GENERATOR, config.MODEL_RULE_GENERATOR, messages=[system_msg, user_msg])
     
-    return response
+    for attempt in range(1, config.RULEBOOK_MAX_RETRIES + 1):
+        valid, feedback = verify_rulebook(user_input, response)
+        
+        if valid:
+            return True, response
+        
+        if attempt < config.RULEBOOK_MAX_RETRIES:
+            response = chat(
+                config.BACKEND_RULE_GENERATOR,
+                config.MODEL_RULE_GENERATOR,
+                messages=[SYSTEM_RULE_FIXER, _build_rule_fixer_prompt(user_input, response, feedback)]
+            )
+        
+    return False, response
 
 
-def verify_rulebook(user_input : str, rulebook : str) -> bool:
+def verify_rulebook(user_input : str, rulebook : str) -> tuple[bool, str]:
     system_msg = SYSTEM_RULE_VERIFIER
     user_msg = _build_rule_verifier_prompt(user_input, rulebook)
     
     response = chat(config.BACKEND_RULE_VERIFIER, config.MODEL_RULE_VERIFIER, messages=[system_msg, user_msg])
     
     if not response.strip().endswith("INVALID") and response.strip().endswith("VALID"):
-        return True
+        return True, response
     
-    return False
+    return False, response
 
 
 def rulebook_to_json(rulebook : str) -> tuple[bool, dict | None]:

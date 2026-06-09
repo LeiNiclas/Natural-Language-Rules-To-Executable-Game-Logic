@@ -257,6 +257,50 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
     if r.returncode != 0:
         errors.append("[apply_move/3] Failed on first legal move from initial state.")
     
+    # Check 5: render_state/1 
+    r = run("(initial_state(S), render_state(S), halt(0))")
+    
+    if r.returncode != 0:
+        errors.append("[render_state/1] Crashed or failed on initial_state.")
+    else:
+        if "_G" in r.stdout or "_A" in r.stdout:
+            errors.append("[render_state/1] Output contains unbound variables (e.g. _G123). State fields may not be fully instantiated.")
+    
+    # Check 6: multiple moves
+    multi_move_goal = """
+        initial_state(S0),
+        (legal_move(S0, M0) -> apply_move(S0, M0, S1) ; S1 = S0),
+        (legal_move(S1, M1) -> apply_move(S1, M1, S2) ; S2 = S1),
+        (legal_move(S2, M2) -> apply_move(S2, M2, S3) ; true),
+        halt(0)
+    """.replace("\n", " ").strip()
+
+    r = run(multi_move_goal)
+    
+    if r.returncode != 0:
+        errors.append("[apply_move/3] Failed when chaining multiple moves. State may be")
+    
+    # Check 7: game_over/2
+    r = run("(clause(game_over(_, _), _) -> halt(0) ; halt(1))")
+    
+    if r.returncode != 0:
+        errors.append("[game_over/2] Predicate is not defined.")
+    
+    # Check 8: Unbound variables in state after apply_move
+    goal = """
+        initial_state(S),
+        legal_move(S, M),
+        apply_move(S, M, S2),
+        term_to_atom(S2, A),
+        atom_string(A, Str),
+        (sub_string(Str, _, _, _, \"_G\") -> halt(1) ; halt(0))
+    """.replace("\n", " ").strip()
+    
+    r = run(goal)
+    
+    if r.returncode != 0:
+        errors.append("[apply_move/3] New state contains unbound variables (_G...).")
+    
     os.unlink(tmp)
     return len(errors) == 0, errors
 # ================================================================
