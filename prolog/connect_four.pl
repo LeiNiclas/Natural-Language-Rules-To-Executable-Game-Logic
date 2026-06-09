@@ -1,8 +1,13 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
+% 2D board representation: list of 6 rows, each a list of 7 atoms (empty, red, yellow)
+
 set_nth1(1, [_|T], V, [V|T]).
-set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
+set_nth1(N, [H|T], V, [H|R]) :-
+    N > 1,
+    N1 is N-1,
+    set_nth1(N1, T, V, R).
 
 set_cell(Row, Col, Board, Value, NewBoard) :-
     nth1(Row, Board, OldRow),
@@ -10,103 +15,84 @@ set_cell(Row, Col, Board, Value, NewBoard) :-
     set_nth1(Row, Board, NewRow, NewBoard).
 
 initial_state(state(Board, red)) :-
-    length(Row, 7), maplist(=(empty), Row),
-    length(Board, 6), maplist(=(Row), Board).
+    Row = [empty, empty, empty, empty, empty, empty, empty],
+    Board = [Row, Row, Row, Row, Row, Row].
 
 current_player(state(_, P), P).
 
-legal_move(state(Board, _), column(Col)) :-
+legal_move(state(Board, _), move(Col)) :-
     between(1, 7, Col),
-    nth1(1, Board, TopRow),
-    nth1(Col, TopRow, empty).
+    get_cell(Board, 1, Col, empty).
 
-apply_move(state(Board, P), column(Col), state(NewBoard, NextP)) :-
-    legal_move(state(Board, P), column(Col)),
-    find_lowest_empty(Board, Col, Row),
-    set_cell(Row, Col, Board, P, NewBoard),
-    next_player(P, NextP).
+apply_move(state(Board, Player), move(Col), state(NewBoard, Next)) :-
+    between(1, 7, Col),
+    get_cell(Board, 1, Col, empty),
+    drop_disc(Board, Col, Player, NewBoard),
+    switch_player(Player, Next).
 
-find_lowest_empty(Board, Col, Row) :-
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, empty),
-    (Row = 6 ; (Row < 6, nth1(RowNext, Board, RowNextList), nth1(Col, RowNextList, V), V \= empty)).
+game_over(state(Board, _), Winner) :-
+    four_in_a_row(Board, Winner).
 
-next_player(red, yellow).
-next_player(yellow, red).
+game_over(state(Board, _), draw) :-
+    \+ (member(Row, Board), member(empty, Row)),
+    \+ four_in_a_row(Board, red),
+    \+ four_in_a_row(Board, yellow).
 
-game_over(State, Winner) :- win_condition(State, Winner).
-game_over(state(Board, _), draw) :- \+ (member(Row, Board), member(empty, Row)).
-
-win_condition(state(Board, Player), Player) :-
-    (horizontal_win(Board, Player);
-     vertical_win(Board, Player);
-     diagonal_win(Board, Player)).
-
-horizontal_win(Board, Player) :-
-    member(Row, Board),
-    append(_, [Player, Player, Player, Player|_], Row).
-
-vertical_win(Board, Player) :-
-    columns(Board, Cols),
-    member(Col, Cols),
-    append(_, [Player, Player, Player, Player|_], Col).
-
-diagonal_win(Board, Player) :-
-    ascending_diagonals(Board, Diags),
-    member(Diag, Diags),
-    append(_, [Player, Player, Player, Player|_], Diag).
-
-diagonal_win(Board, Player) :-
-    descending_diagonals(Board, Diags),
-    member(Diag, Diags),
-    append(_, [Player, Player, Player, Player|_], Diag).
-
-columns(Board, Cols) :-
-    transpose(Board, Cols).
-
-ascending_diagonals(Board, Diags) :-
-    findall(Diag, ascending_diag(Board, Diag), Diags).
-
-ascending_diag(Board, Diag) :-
-    length(Board, RowCount),
-    length(Board, ColCount),
-    between(1, RowCount, StartRow),
-    between(1, ColCount, StartCol),
-    diag_ascend(Board, StartRow, StartCol, Diag).
-
-diag_ascend(Board, Row, Col, [Elem|Diag]) :-
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, Elem),
-    Row1 is Row + 1, Col1 is Col + 1,
-    diag_ascend(Board, Row1, Col1, Diag).
-diag_ascend(_, Row, Col, []) :-
-    \+ (Row > 0, Col > 0).
-
-descending_diagonals(Board, Diags) :-
-    findall(Diag, descending_diag(Board, Diag), Diags).
-
-descending_diag(Board, Diag) :-
-    length(Board, RowCount),
-    length(Board, ColCount),
-    between(1, RowCount, StartRow),
-    between(1, ColCount, StartCol),
-    diag_descend(Board, StartRow, StartCol, Diag).
-
-diag_descend(Board, Row, Col, [Elem|Diag]) :-
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, Elem),
-    Row1 is Row + 1, Col1 is Col - 1,
-    diag_descend(Board, Row1, Col1, Diag).
-diag_descend(_, Row, Col, []) :-
-    \+ (Row > 0, Col > 0).
-
-render_state(state(Board, CurrentPlayer)) :-
-    maplist(render_row, Board),
-    format("Current Player: ~w~n", [CurrentPlayer]).
+render_state(state(Board, Player)) :-
+    format("Current player: ~w~n", [Player]),
+    maplist(render_row, Board).
 
 render_row(Row) :-
     maplist(render_cell, Row),
     nl.
 
-render_cell(empty) :- format('.').
-render_cell(P) :- format('~w', [P]).
+render_cell(empty) :- format(".").
+render_cell(red) :- format("R").
+render_cell(yellow) :- format("Y").
+
+get_cell(Board, Row, Col, Cell) :-
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, Cell).
+
+column_full(Board, Col) :-
+    get_cell(Board, 1, Col, Cell),
+    Cell \= empty.
+
+drop_disc(Board, Col, Player, NewBoard) :-
+    findall(R, (between(1, 6, R), get_cell(Board, R, Col, empty)), Rows),
+    last(Rows, Row),
+    set_cell(Row, Col, Board, Player, NewBoard).
+
+switch_player(red, yellow).
+switch_player(yellow, red).
+
+check_horizontal(RowList, P) :-
+    append(_, [P, P, P, P | _], RowList).
+
+check_vertical(Board, Col, P) :-
+    findall(Cell, (between(1, 6, R), get_cell(Board, R, Col, Cell)), ColList),
+    check_horizontal(ColList, P).
+
+check_diagonal_neg(Board, P) :-
+    between(1, 3, R),
+    between(1, 4, C),
+    get_cell(Board, R, C, P),
+    R1 is R+1, C1 is C+1, get_cell(Board, R1, C1, P),
+    R2 is R+2, C2 is C+2, get_cell(Board, R2, C2, P),
+    R3 is R+3, C3 is C+3, get_cell(Board, R3, C3, P).
+
+check_diagonal_pos(Board, P) :-
+    between(1, 3, R),
+    between(4, 7, C),
+    get_cell(Board, R, C, P),
+    R1 is R+1, C1 is C-1, get_cell(Board, R1, C1, P),
+    R2 is R+2, C2 is C-2, get_cell(Board, R2, C2, P),
+    R3 is R+3, C3 is C-3, get_cell(Board, R3, C3, P).
+
+four_in_a_row(Board, P) :-
+    P \= empty,
+    (   member(Row, Board), check_horizontal(Row, P)
+    ;   between(1, 7, C), check_vertical(Board, C, P)
+    ;   check_diagonal_neg(Board, P)
+    ;   check_diagonal_pos(Board, P)
+    ).

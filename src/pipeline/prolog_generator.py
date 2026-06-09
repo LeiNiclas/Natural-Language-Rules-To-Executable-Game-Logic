@@ -139,30 +139,84 @@ render_state(state(D1, D2, P)) :-
 % Draw - board is full:
 %   \\+ member(empty, Board)
 """
+
+
+SYSTEM_DESIGN_PLANNER = """\
+You are an expert SWI-Prolog architect. Before any code is written, you create a precise implementation plan.
+
+Given a game specification in JSON, produce a short structured plan with exactly these sections:
+
+STATE
+- What does the state functor look like? e.g. state(Board, CurrentPlayer, Score)
+- What is the exact type of each field? (flat list, 2D list, atom, integer, ...)
+
+INITIAL STATE
+- Exact initial value of each field.
+
+LEGAL MOVE
+- What does a Move term look like? e.g. move(Row, Col) or play(Player, Card)
+- What conditions must hold for a move to be legal? List them precisely.
+
+APPLY MOVE
+- What changes in the state after a move? List every field that changes and how.
+- What stays the same?
+
+GAME OVER
+- Exact win conditions with concrete examples.
+- Draw conditions if any.
+
+HELPER PREDICATES
+- List any helper predicates you will need, with their signature and purpose.
+- e.g. check_line(Board, I1, I2, I3, Player) - checks three board positions for same player
+
+Keep each section concise. No code, no Prolog syntax — plain English only.
+"""
 # ================================================================
 
 # ================================================================
 # Internal functions
 # ================================================================
-def _build_prolog_prompt(structured_json : dict) -> str:
-    return (
-        "Implement the following game in SWI-Prolog. "
-        + "Follow every rule in the system prompt exactly.\n\n"
+def _generate_design_plan(structured_json : dict) -> str:
+    user_msg = (
+        "Create an implementation plan for the following game:\n\n"
         + json.dumps(structured_json, indent=2)
     )
+    
+    return chat(config.BACKEND_PROLOG_GENERATOR, config.MODEL_PROLOG_GENERATOR, messages=[SYSTEM_DESIGN_PLANNER, user_msg])
 
-def _build_prolog_fix_prompt(structured_json : dict, broken_code : str, errors: list) -> str:
+
+def _build_prolog_prompt(structured_json : dict, design_plan : str = None) -> str:
+    base = (
+        "Implement the following game in SWI-Prolog. "
+        + "Follow every rule in the system prompt exactly.\n\n"
+    )
+    
+    if design_plan:
+        base += "Follow this implementation plan:\n" + design_plan + "\n\n"
+    
+    base += json.dumps(structured_json, indent=2)
+    
+    return base
+
+
+def _build_prolog_fix_prompt(structured_json : dict, broken_code : str, errors: list, design_plan : str = None) -> str:
     error_block  = "\n".join(f"  - {e}" for e in errors)
     
-    return (
+    base = (
         "The Prolog file you generated failed validation with these errors:\n"
         + error_block + "\n\n"
         + "Here is the broken code:\n" + broken_code + "\n\n"
         + "Fix all errors and return the complete corrected file. "
         + "Follow every rule in the system prompt exactly.\n\n"
-        + "Game spec for reference:\n"
-        + json.dumps(structured_json, indent=2)
     )
+    
+    if design_plan:
+        base += "Your originial implementation plan:\n" + design_plan + "\n\n"
+
+    base += "Game spec for reference:\n" + json.dumps(structured_json, indent=2)
+    
+    return base
+
 
 def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
     errors = []
@@ -210,16 +264,21 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
 # ================================================================
 # Public endpoints
 # ================================================================
-def generate_prolog(structured_json : dict) -> str:
+def generate_prolog(structured_json : dict) -> tuple[str, str] | tuple[None, None]:
     system_msg = SYSTEM_PROLOG_GENERATOR + "\n\n" + FEW_SHOT_PROLOG
     code = None
     errors = None
     
+    design_plan = None
+    
+    if config.PROLOG_USE_DESIGN_PLAN:
+        design_plan = _generate_design_plan(structured_json)
+    
     for attempt in range(1, config.PROLOG_MAX_RETRIES + 1):
         if attempt == 1:
-            user_msg = _build_prolog_prompt(structured_json)
+            user_msg = _build_prolog_prompt(structured_json, design_plan)
         else:
-            user_msg = _build_prolog_fix_prompt(structured_json, code, errors)
+            user_msg = _build_prolog_fix_prompt(structured_json, code, errors, design_plan)
         
         code = chat(config.BACKEND_PROLOG_GENERATOR, config.MODEL_PROLOG_GENERATOR, messages=[system_msg, user_msg])
         
@@ -230,10 +289,37 @@ def generate_prolog(structured_json : dict) -> str:
         valid, errors = _validate_prolog(code)
         
         if valid:
-            return code
+            return code, design_plan
         else:
             if attempt == config.PROLOG_MAX_RETRIES:
-                return None
+                return None, None
+
+
+def save_config(structured_json : dict, design_plan : str | None, game_name : str) -> str:
+    os.makedirs(config.PROLOG_DIRECTORY, exist_ok=True)
+    safe_name = game_name.lower().replace(" ", "_")
+    filepath = os.path.join(config.PROLOG_DIRECTORY, f"{safe_name}_config.json")
+    
+    config_data = {
+        "game_name": game_name,
+        "models": {
+            "rule_generator":   {"backend": config.BACKEND_RULE_GENERATOR,      "model": config.MODEL_RULE_GENERATOR},
+            "rule_verifier":    {"backend": config.BACKEND_RULE_VERIFIER,       "model": config.MODEL_RULE_VERIFIER},
+            "json_structurer":  {"backend": config.BACKEND_JSON_STRUCTURER,     "model": config.MODEL_JSON_STRUCTURER},
+            "prolog_generator": {"backend": config.BACKEND_PROLOG_GENERATOR,    "model": config.MODEL_PROLOG_GENERATOR}
+        },
+        "prompts": {
+            "system_prolog_generator": SYSTEM_PROLOG_GENERATOR,
+            "system_design_planner": SYSTEM_DESIGN_PLANNER
+        },
+        "design_plan": design_plan,
+        "structured_json": structured_json
+    }
+    
+    with open(filepath, "w", encoding="utf-8") as f:
+        json.dump(config_data, f, indent=2, ensure_ascii=False)
+    
+    return filepath
 
 
 def save_prolog(code : str, game_name : str) -> str:

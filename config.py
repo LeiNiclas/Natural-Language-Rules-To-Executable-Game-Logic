@@ -12,14 +12,15 @@ MODEL_RULE_GENERATOR    = "gemma4:31b-cloud"
 BACKEND_RULE_VERIFIER   = "ollama"
 MODEL_RULE_VERIFIER     = "gemma4:31b-cloud"
 
-BACKEND_JSON_STRUCTURER = "ollama"
-MODEL_JSON_STRUCTURER   = "gemma4:31b-cloud"
+BACKEND_JSON_STRUCTURER = "openai"
+MODEL_JSON_STRUCTURER   = "o4-mini"
 
 BACKEND_PROLOG_GENERATOR    = "openai"
-MODEL_PROLOG_GENERATOR      = "gpt-4o" # qwen3-coder:480b-cloud
+MODEL_PROLOG_GENERATOR      = "o4-mini" # qwen3-coder:480b-cloud
 
 # Pipeline settings
 PROLOG_MAX_RETRIES  = 3  # How many times to retry Prolog generation on validation failure
+PROLOG_USE_DESIGN_PLAN = True
 SWIPL_TIMEOUT       = 10 # Seconds before a Prolog validation call is killed
 
 # Paths

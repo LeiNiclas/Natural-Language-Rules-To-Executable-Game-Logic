@@ -2,6 +2,7 @@ import config
 import os
 import streamlit as st
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -12,13 +13,16 @@ import src.engine.prolog_engine as engine
 
 def _init_state():
     defaults = {
-        "phase":        "input",    # input | generating | playing | game_over
-        "pl_file":      None,
-        "game_name":    None,
-        "state":        None,       # current Prolog state term string
-        "legal_moves":  [],
-        "move_history": [],         # list of {"move" : str, "player" : str}
-        "winner":       None
+        "phase":            "input",    # input | generating | playing | game_over
+        "pl_file":          None,
+        "game_name":        None,
+        "state":            None,       # current Prolog state term string
+        "legal_moves":      [],
+        "move_history":     [],         # list of {"move" : str, "player" : str}
+        "winner":           None,
+        "prolog_code":      None,
+        "structured_json":  None,
+        "design_plan":      None
     }
     
     for k, v in defaults.items():
@@ -52,15 +56,24 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False):
             return
         
         st.write("Generating Prolog code...")
-        code = prolog_gen.generate_prolog(structured)
+        code, design_plan = prolog_gen.generate_prolog(structured)
         
         if code is None:
             status.update(label="Prolog generation failed after all retries.", state="error")
             st.session_state["phase"] = "input"
             return
-
+        
+        tmp_dir = tempfile.mkdtemp()
         game_name = structured.get("game_name", user_input)
-        pl_file = prolog_gen.save_prolog(code, game_name)
+        safe_name = game_name.lower().replace(" ", "_")
+        pl_file = os.path.join(tmp_dir, f"{safe_name}.pl")
+        
+        with open(pl_file, "w", encoding="utf-8") as f:
+            f.write(code)
+        
+        st.session_state["prolog_code"] = code
+        st.session_state["structured_json"] = structured
+        st.session_state["design_plan"] = design_plan
         
         status.update(label="Game ready!", state="complete")
     
@@ -210,6 +223,30 @@ def _render_playing_phase():
             use_container_width=True,
             hide_index=False
         )
+    
+    st.divider()
+    col_save1, col_save2 = st.columns(2)
+    
+    with col_save1:
+        if st.button("Save Prolog File"):
+            path = prolog_gen.save_prolog(
+                st.session_state["prolog_code"],
+                st.session_state["game_name"]
+            )
+            st.success(f"Saved to '{path}'")
+    
+    with col_save2:
+        if st.button("Save Prolog + Config"):
+            pl_path = prolog_gen.save_prolog(
+                st.session_state["prolog_code"],
+                st.session_state["game_name"]
+            )
+            cfg_path = prolog_gen.save_config(
+                st.session_state["structured_json"],
+                st.session_state["design_plan"],
+                st.session_state["game_name"]
+            )
+            st.success(f"Saved to '{pl_path}' and '{cfg_path}'")
 
 
 def _render_game_over_phase():
