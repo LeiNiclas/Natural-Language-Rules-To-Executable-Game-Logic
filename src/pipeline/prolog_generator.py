@@ -1,17 +1,44 @@
+"""
+prolog_generator.py
+-------------------
+LLM-driven Prolog code generation from structured XML, with validation
+and automatic retry/repair via a true multi-turn conversation.
+
+Key design decisions
+--------------------
+- The repair loop builds a genuine multi-turn message history so the model
+  sees every prior attempt and its specific errors. This prevents it from
+  repeating the same mistake across retries.
+- A lightweight "diagnose" step runs before each repair turn: it asks the
+  model to reason about WHY the errors occurred before writing new code.
+  This forces a chain-of-thought pass that significantly reduces relapses.
+- The Ollama client is a module-level singleton (created once).
+- Temp files are always cleaned up via try/finally.
+"""
+
 import config
-import json
 import os
 import subprocess
 
 from ollama import Client
 from tempfile import NamedTemporaryFile
 
+# Module-level client singleton
+_ollama_client: Client | None = None
+
+
+def _get_client() -> Client:
+    global _ollama_client
+    if _ollama_client is None:
+        _ollama_client = Client()
+    return _ollama_client
+
 
 # ================================================================
-# Constraints & Restrictions
+# System prompts
 # ================================================================
 SYSTEM_PROLOG_GENERATOR = r"""\
-You are an expert SWI-Prolog developer. You implement games in SWI-Prolog from structured JSON.
+You are an expert SWI-Prolog developer. You implement games in SWI-Prolog from structured XML.
 
 OUTPUT FORMAT:
 - Pure SWI-Prolog code only. No markdown, no fenced blocks, no prose.
@@ -42,40 +69,30 @@ PROLOG SEMANTICS - these mistakes cause silent failures:
      RIGHT: set_nth1(Pos, Board, P, NewBoard), next_player(P, Next), NewState = state(NewBoard, Next).
 
 STATE AND BOARD REPRESENTATION:
-  Choose the representation that best fits the game. Document your choice in a comment.
-
   Flat list - use for simple grids (Tic-Tac-Toe, Othello):
     Board = [empty, empty, ...] of length rows*cols.
-    Read:  nth1(Index, Board, Value)
-    Write: set_nth1(Index, Board, Value, NewBoard)
-    Index from row/col: Index is (Row-1)*NumCols + Col.
     Helper (include verbatim if used):
       set_nth1(1, [_|T], V, [V|T]).
       set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
 
   2D list - use when rows are natural units (Connect Four, Checkers):
     Board = [[empty,...], [empty,...], ...] one sublist per row, top to bottom.
-    Read:  nth1(Row, Board, RowList), nth1(Col, RowList, Value)
-    Write: ALWAYS use this exact helper, include it verbatim:
+    Write helper (include verbatim if used):
       set_cell(Row, Col, Board, Value, NewBoard) :-
           nth1(Row, Board, OldRow),
           set_nth1(Col, OldRow, Value, NewRow),
           set_nth1(Row, Board, NewRow, NewBoard).
       set_nth1(1, [_|T], V, [V|T]).
       set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
-    NEVER use set_nth1 directly on a 2D board - always go through set_cell.
-
-  Other - card lists, pile counts, etc. Choose whatever is natural.
+    NEVER use set_nth1 directly on a 2D board.
 
 WIN CONDITIONS:
   - Always check that the winning value is not the neutral/empty atom.
     RIGHT: nth1(I, Board, P), P \= empty
-    WRONG: nth1(I, Board, P)
 
 RENDER STATE:
-  - Print the neutral/empty atom as a visible placeholder, e.g. '.' or '_'.
+  - Print the neutral/empty atom as '.'. NEVER print the word 'empty'.
     RIGHT: (C = empty -> format('.') ; format('~w', [C]))
-  - NEVER print the word 'empty' on the board.
   - NEVER wrap atoms in a functor like symbol/1 or cell/1.
 """
 
@@ -90,9 +107,6 @@ set_nth1(1, [_|T], V, [V|T]).
 set_nth1(N, [H|T], V, [H|R]) :- N > 1, N1 is N-1, set_nth1(N1, T, V, R).
 
 % state(DeckP1, DeckP2, CurrentPlayer)
-% DeckP1, DeckP2 = lists of card atoms
-% CurrentPlayer  = player1 | player2
-
 initial_state(state([c2,c4,c6,c8,c10], [c3,c5,c7,c9,jack], player1)).
 
 current_player(state(_, _, P), P).
@@ -123,146 +137,203 @@ game_over(state(_, [], _), player1).
 render_state(state(D1, D2, P)) :-
     length(D1, L1), length(D2, L2),
     format("Player: ~w | P1 cards: ~w | P2 cards: ~w~n", [P, L1, L2]).
-
-% ==== QUERY REFERENCE ====
-% ?- initial_state(S).
-% ?- initial_state(S), current_player(S, P).
-% ?- initial_state(S), legal_move(S, M).
-% ?- initial_state(S), apply_move(S, play(player1,c2), S2), render_state(S2).
-% ?- initial_state(S), game_over(S, W).
-
-% --- KEY PATTERNS for grid/board games (not used in War, shown for reference) ---
-% Win-line check - use nth1 directly, never write row/col extractor predicates:
-%   check_line(Board, I1, I2, I3, Player) :-
-%       nth1(I1, Board, Player), nth1(I2, Board, Player), nth1(I3, Board, Player),
-%       Player \\= empty.
-% Draw - board is full:
-%   \\+ member(empty, Board)
 """
-# ================================================================
+
+# Injected into the conversation after each failed attempt, before asking
+# for a rewrite. Forces the model to reason about root causes before coding.
+_DIAGNOSE_PROMPT = """\
+Before writing the corrected code, reason step-by-step about each error:
+1. What is the exact root cause (not just a restatement of the error)?
+2. Which specific line(s) or clause(s) in your previous code caused it?
+3. What is the minimal, correct fix?
+
+Write your diagnosis as plain text. Do NOT write any Prolog yet.
+"""
+
+_REWRITE_PROMPT = """\
+Now, using your diagnosis above, write the complete corrected SWI-Prolog file.
+Pure code only — no markdown, no prose, no fences.
+"""
+
 
 # ================================================================
-# Internal functions
+# Internal helpers
 # ================================================================
-def _build_prolog_prompt(structured_json : dict) -> str:
-    return (
-        "Implement the following game in SWI-Prolog. "
-        + "Follow every rule in the system prompt exactly.\n\n"
-        + json.dumps(structured_json, indent=2)
-    )
-
-def _build_prolog_fix_prompt(structured_json : dict, broken_code : str, errors: list) -> str:
-    error_block  = "\n".join(f"  - {e}" for e in errors)
-    
-    return (
-        "The Prolog file you generated failed validation with these errors:\n"
-        + error_block + "\n\n"
-        + "Here is the broken code:\n" + broken_code + "\n\n"
-        + "Fix all errors and return the complete corrected file. "
-        + "Follow every rule in the system prompt exactly.\n\n"
-        + "Game spec for reference:\n"
-        + json.dumps(structured_json, indent=2)
-    )
+def _strip_fences(code: str) -> str:
+    """Remove markdown code fences the model may have added."""
+    s = code.strip()
+    if s.startswith("```"):
+        lines = s.splitlines()
+        start = 1
+        end = len(lines) - 1 if lines[-1].strip() == "```" else len(lines)
+        s = "\n".join(lines[start:end])
+    return s.strip()
 
 
 def _validate_prolog(prolog_code: str) -> tuple[bool, list[str]]:
-    errors = []
+    """
+    Write *prolog_code* to a temp file and run a battery of swipl checks.
+    Returns (all_passed, list_of_error_strings).
+    The temp file is always cleaned up via try/finally.
+    """
+    errors: list[str] = []
 
     with NamedTemporaryFile(suffix=".pl", mode="w", delete=False, encoding="utf-8") as f:
         f.write(prolog_code)
         tmp = f.name
 
-    def run(goal: str, timeout: int = None) -> subprocess.CompletedProcess:
-        if timeout is None:
-            timeout = config.SWIPL_TIMEOUT
+    def run(goal: str, timeout: int = config.SWIPL_TIMEOUT) -> subprocess.CompletedProcess:
         return subprocess.run(
             ["swipl", "-g", goal, "-t", "halt(1)", tmp],
-            capture_output=True, text=True, timeout=timeout
+            capture_output=True,
+            text=True,
+            timeout=timeout,
         )
 
-    # Check 1: Load
-    print("  - Checking file load...")
-    r = run("halt", timeout=30)
-
-    if r.returncode != 0:
-        errors.append(f"[Load error]\n{r.stderr.strip()}")
-        os.unlink(tmp)
-        return False, errors
-
-    # Check 2: initial_state/1
-    print("  - Checking initial_state/1...")
     try:
-        r = run("(initial_state(_) -> halt(0) ; halt(1))", timeout=30)
+        # Check 1: file loads cleanly
+        print("  - Checking file load...")
+        r = run("halt", timeout=30)
         if r.returncode != 0:
-            errors.append("[initial_state/1] Did not succeed.")
-    except subprocess.TimeoutExpired:
-        errors.append("[initial_state/1] Timed out - predicate may be too slow or infinite loop.")
+            errors.append(f"[Load error]\n{r.stderr.strip()}")
+            return False, errors  # no point continuing
 
-    # Check 3: legal_move/2 - This is often the slow part
-    print("  - Checking legal_move/2 (this may take a while for complex games)...")
-    try:
-        r = run("(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))", timeout=config.SWIPL_TIMEOUT)
-        if r.returncode != 0:
-            errors.append("[legal_move/2] No legal moves from initial state.")
-    except subprocess.TimeoutExpired:
-        errors.append("[legal_move/2] Timed out - move generation is too slow or infinite loop.")
+        # Check 2: initial_state/1
+        print("  - Checking initial_state/1...")
+        try:
+            r = run("(initial_state(_) -> halt(0) ; halt(1))", timeout=30)
+            if r.returncode != 0:
+                errors.append("[initial_state/1] Did not succeed.")
+        except subprocess.TimeoutExpired:
+            errors.append("[initial_state/1] Timed out.")
 
-    # Check 4: apply_move/3
-    print("  - Checking apply_move/3...")
-    try:
-        r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, _) -> halt(0) ; halt(1))", timeout=30)
-        if r.returncode != 0:
-            errors.append("[apply_move/3] Failed on first legal move from initial state.")
-    except subprocess.TimeoutExpired:
-        errors.append("[apply_move/3] Timed out - move application is too slow.")
+        # Check 3: legal_move/2
+        print("  - Checking legal_move/2...")
+        try:
+            r = run(
+                "(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))",
+                timeout=config.SWIPL_TIMEOUT,
+            )
+            if r.returncode != 0:
+                errors.append("[legal_move/2] No legal moves from initial state.")
+        except subprocess.TimeoutExpired:
+            errors.append("[legal_move/2] Timed out.")
 
-    os.unlink(tmp)
+        # Check 4: apply_move/3
+        print("  - Checking apply_move/3...")
+        try:
+            r = run(
+                "(initial_state(S), legal_move(S, M), apply_move(S, M, _) -> halt(0) ; halt(1))",
+                timeout=30,
+            )
+            if r.returncode != 0:
+                errors.append("[apply_move/3] Failed on first legal move from initial state.")
+        except subprocess.TimeoutExpired:
+            errors.append("[apply_move/3] Timed out.")
+
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
 
     if errors:
-        print(f"  Validation found {len(errors)} errors.")
+        print(f"  Validation found {len(errors)} error(s).")
     else:
         print("  Validation passed!")
 
     return len(errors) == 0, errors
-# ================================================================
+
+
+def _format_errors(errors: list[str]) -> str:
+    return "\n".join(f"  - {e}" for e in errors)
+
 
 # ================================================================
 # Public endpoints
 # ================================================================
-def generate_prolog(structured_json : dict) -> str:
-    client = Client()
-    system_msg = {"role": "system", "content": SYSTEM_PROLOG_GENERATOR + "\n\n" + FEW_SHOT_PROLOG}
-    code = None
-    errors = None
-    
+def generate_prolog(xml_str: str) -> tuple[str | None, list[dict]]:
+    """
+    Generate and validate SWI-Prolog code from *xml_str*.
+
+    Uses a multi-turn conversation so the model sees every prior attempt
+    and its errors. A diagnosis step before each rewrite forces the model
+    to reason about root causes before producing new code.
+
+    Returns:
+        (code, attempts)
+        - code     : validated Prolog string, or None if all attempts failed
+        - attempts : list of dicts {attempt, code, errors, passed}
+                     for display in the UI
+    """
+    client = _get_client()
+    system_msg = {
+        "role": "system",
+        "content": SYSTEM_PROLOG_GENERATOR + "\n\n" + FEW_SHOT_PROLOG,
+    }
+
+    # The conversation history grows with every turn so the model has full context
+    history: list[dict] = [system_msg]
+    attempt_log: list[dict] = []
+    code: str = ""
+
     for attempt in range(1, config.PROLOG_MAX_RETRIES + 1):
+        print(f"  [Prolog gen] attempt {attempt}/{config.PROLOG_MAX_RETRIES}")
+
         if attempt == 1:
-            user_msg = {"role": "user", "content": _build_prolog_prompt(structured_json)}
+            history.append({
+                "role": "user",
+                "content": (
+                    "Implement the following game in SWI-Prolog. "
+                    "Follow every rule in the system prompt exactly.\n\n"
+                    + xml_str
+                ),
+            })
         else:
-            user_msg = {"role": "user", "content": _build_prolog_fix_prompt(structured_json, code, errors)}
-        
-        code = client.chat(config.MODEL_PROLOG_GENERATOR, messages=[system_msg, user_msg]).message.content
-        
-        if code.strip().startswith("```"):
-            lines = code.strip().splitlines()
-            code = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-        
+            # Tell the model what went wrong with its last attempt
+            history.append({
+                "role": "user",
+                "content": (
+                    f"Your code failed validation with these errors:\n"
+                    f"{_format_errors(errors)}\n\n"
+                    f"{_DIAGNOSE_PROMPT}"
+                ),
+            })
+            # Get the diagnosis (plain text, no code yet)
+            diagnosis_resp = client.chat(
+                config.MODEL_PROLOG_GENERATOR, messages=history
+            ).message.content
+            history.append({"role": "assistant", "content": diagnosis_resp})
+
+            # Now ask for the actual rewrite
+            history.append({"role": "user", "content": _REWRITE_PROMPT})
+
+        raw = client.chat(
+            config.MODEL_PROLOG_GENERATOR, messages=history
+        ).message.content
+        history.append({"role": "assistant", "content": raw})
+
+        code = _strip_fences(raw)
         valid, errors = _validate_prolog(code)
-        
+
+        attempt_log.append({
+            "attempt": attempt,
+            "code":    code,
+            "errors":  errors,
+            "passed":  valid,
+        })
+
         if valid:
-            return code
-        else:
-            if attempt == config.PROLOG_MAX_RETRIES:
-                return None
+            return code, attempt_log
+
+    return None, attempt_log
 
 
-def save_prolog(code : str, game_name : str) -> str:
+def save_prolog(code: str, game_name: str) -> str:
+    """Write *code* to <PROLOG_DIRECTORY>/<safe_game_name>.pl and return the path."""
     os.makedirs(config.PROLOG_DIRECTORY, exist_ok=True)
     safe_name = game_name.lower().replace(" ", "_")
     filepath = os.path.join(config.PROLOG_DIRECTORY, f"{safe_name}.pl")
-    
     with open(filepath, "w", encoding="utf-8") as f:
         f.write(code)
-    
     return filepath
-# ================================================================
