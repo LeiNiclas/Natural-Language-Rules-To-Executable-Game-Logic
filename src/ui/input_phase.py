@@ -1,10 +1,14 @@
 import streamlit as st
 import src.pipeline.rule_generator as rule_gen
-import src.pipeline.prolog_generator as prolog_gen
 import src.engine.prolog_engine as engine
 import config
 import os
 import tempfile
+
+if config.PROLOG_USE_MULTISTAGE:
+    import src.pipeline.prolog_composer as prolog_gen
+else:
+    import src.pipeline.prolog_generator as prolog_gen
 
 
 def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:

@@ -1,164 +1,140 @@
 :- use_module(library(lists)).
 :- use_module(library(apply)).
 
-% Helper to set Nth element in list
+% replace Nth element of a list
 set_nth1(1, [_|T], V, [V|T]).
 set_nth1(N, [H|T], V, [H|R]) :-
     N > 1,
-    N1 is N-1,
+    N1 is N - 1,
     set_nth1(N1, T, V, R).
 
-% Helper to set cell at (Row,Col) in 2D board
-set_cell(Row, Col, Board, Value, NewBoard) :-
-    nth1(Row, Board, OldRow),
-    set_nth1(Col, OldRow, Value, NewRow),
-    set_nth1(Row, Board, NewRow, NewBoard).
+% set the cell at Row,Col in a 2D board
+set_cell(1, Col, [Row|Rest], V, [NewRow|Rest]) :-
+    set_nth1(Col, Row, V, NewRow).
+set_cell(RowNum, Col, [Row|Rest], V, [Row|NewRest]) :-
+    RowNum > 1,
+    RowNum1 is RowNum - 1,
+    set_cell(RowNum1, Col, Rest, V, NewRest).
 
-% Check column is between 1 and 7
-column_in_range(Column) :-
-    between(1, 7, Column).
+% initial state: empty 6x7 board, red to move
+initial_state(state(
+    [[empty,empty,empty,empty,empty,empty,empty],
+     [empty,empty,empty,empty,empty,empty,empty],
+     [empty,empty,empty,empty,empty,empty,empty],
+     [empty,empty,empty,empty,empty,empty,empty],
+     [empty,empty,empty,empty,empty,empty,empty],
+     [empty,empty,empty,empty,empty,empty,empty]],
+    red
+)).
 
-% Check top cell of column is empty
-column_not_full(Board, Column) :-
-    nth1(1, Board, TopRow),
-    nth1(Column, TopRow, empty).
-
-% Find drop row by scanning from bottom (6) upwards
-find_drop_row(Board, Column, Row) :-
-    find_drop_row(6, Board, Column, Row).
-find_drop_row(0, _, _, _) :- fail.
-find_drop_row(R, Board, Column, R) :-
-    nth1(R, Board, RowList),
-    nth1(Column, RowList, empty), !.
-find_drop_row(R, Board, Column, Row) :-
-    R1 is R - 1,
-    find_drop_row(R1, Board, Column, Row).
-
-% Update board at position with player's disc
-update_board(Board, Row, Column, Player, NewBoard) :-
-    set_cell(Row, Column, Board, Player, NewBoard).
-
-% Alternate players
-next_player(red, yellow).
-next_player(yellow, red).
-
-% Check four consecutive in a list
-consecutive_four([A,B,C,D|_], Player) :-
-    A == Player,
-    B == Player,
-    C == Player,
-    D == Player.
-consecutive_four([_|T], Player) :-
-    consecutive_four(T, Player).
-
-% Extract column list
-get_column(Board, Col, ColList) :-
-    findall(Cell, (nth1(_, Board, Row), nth1(Col, Row, Cell)), ColList).
-
-% Extract descending diagonal from start
-get_diag_desc(Board, Row, Col, [Cell|Rest]) :-
-    Row =< 6,
-    Col =< 7,
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, Cell),
-    R1 is Row + 1,
-    C1 is Col + 1,
-    get_diag_desc(Board, R1, C1, Rest).
-get_diag_desc(_, Row, Col, []) :-
-    (Row > 6 ; Col > 7).
-
-% Extract ascending diagonal from start
-get_diag_asc(Board, Row, Col, [Cell|Rest]) :-
-    Row >= 1,
-    Col =< 7,
-    nth1(Row, Board, RowList),
-    nth1(Col, RowList, Cell),
-    R1 is Row - 1,
-    C1 is Col + 1,
-    get_diag_asc(Board, R1, C1, Rest).
-get_diag_asc(_, Row, Col, []) :-
-    (Row < 1 ; Col > 7).
-
-% Check horizontal win
-four_consecutive_horizontal(Board, Player) :-
-    member(RowList, Board),
-    consecutive_four(RowList, Player).
-
-% Check vertical win
-four_consecutive_vertical(Board, Player) :-
-    between(1, 7, Col),
-    get_column(Board, Col, ColList),
-    consecutive_four(ColList, Player).
-
-% Check descending diagonal win
-four_consecutive_diagonal_desc(Board, Player) :-
-    between(1, 3, Row),
-    between(1, 4, Col),
-    get_diag_desc(Board, Row, Col, Diag),
-    consecutive_four(Diag, Player).
-
-% Check ascending diagonal win
-four_consecutive_diagonal_asc(Board, Player) :-
-    between(4, 6, Row),
-    between(1, 4, Col),
-    get_diag_asc(Board, Row, Col, Diag),
-    consecutive_four(Diag, Player).
-
-% Check if board is full (no empties)
-board_full(Board) :-
-    \+ ( member(Row, Board), member(empty, Row) ).
-
-% Initial game state
-initial_state(state([
-    [empty,empty,empty,empty,empty,empty,empty],
-    [empty,empty,empty,empty,empty,empty,empty],
-    [empty,empty,empty,empty,empty,empty,empty],
-    [empty,empty,empty,empty,empty,empty,empty],
-    [empty,empty,empty,empty,empty,empty,empty],
-    [empty,empty,empty,empty,empty,empty,empty]
-], red)).
-
-% Get current player
+% get the current player from state
 current_player(state(_, P), P).
 
-% Enumerate legal moves
-legal_move(state(Board, _), move(Column)) :-
-    column_in_range(Column),
-    column_not_full(Board, Column).
+% legal moves: drop a disc of the current player's color into a non-full column
+legal_move(state(Board, Player), drop(Player, Col)) :-
+    between(1, 7, Col),
+    nth1(1, Board, TopRow),
+    nth1(Col, TopRow, empty).
 
-% Apply a move to the state
-apply_move(state(Board, Player), move(Column), state(NewBoard, Next)) :-
-    column_in_range(Column),
-    column_not_full(Board, Column),
-    find_drop_row(Board, Column, Row),
-    update_board(Board, Row, Column, Player, NewBoard),
-    next_player(Player, Next).
+% helper: find the lowest empty cell in column Col, return its Row index
+drop_row(Board, Col, Row) :-
+    drop_row(Board, Col, 6, Row).
 
-% Check for game over by win
-game_over(state(Board, Current), Winner) :-
-    next_player(Winner, Current),
-    (
-        four_consecutive_horizontal(Board, Winner)
-    ;   four_consecutive_vertical(Board, Winner)
-    ;   four_consecutive_diagonal_desc(Board, Winner)
-    ;   four_consecutive_diagonal_asc(Board, Winner)
-    ), !.
+drop_row(_, _, 0, _) :- fail.
+drop_row(Board, Col, N, N) :-
+    nth1(N, Board, RowList),
+    nth1(Col, RowList, empty), !.
+drop_row(Board, Col, N, Row) :-
+    N > 0,
+    N1 is N - 1,
+    drop_row(Board, Col, N1, Row).
 
-% Check for game over by draw
+% switch player
+other(red, yellow).
+other(yellow, red).
+
+% apply move: drop a disc and switch turn
+apply_move(State, drop(Player, Col), state(NewBoard, NextPlayer)) :-
+    legal_move(State, drop(Player, Col)),
+    State = state(Board, Player),
+    drop_row(Board, Col, Row),
+    set_cell(Row, Col, Board, Player, NewBoard),
+    other(Player, NextPlayer).
+
+% helper to get a cell's value
+cell(Board, Row, Col, Val) :-
+    nth1(Row, Board, RowList),
+    nth1(Col, RowList, Val).
+
+% horizontal win
+win_line(Board, Player) :-
+    between(1, 6, Row),
+    between(1, 4, Col),
+    cell(Board, Row, Col, Player),
+    Player \= empty,
+    C1 is Col + 1, cell(Board, Row, C1, Player),
+    C2 is Col + 2, cell(Board, Row, C2, Player),
+    C3 is Col + 3, cell(Board, Row, C3, Player).
+
+% vertical win
+win_line(Board, Player) :-
+    between(1, 3, Row),
+    between(1, 7, Col),
+    cell(Board, Row, Col, Player),
+    Player \= empty,
+    R1 is Row + 1, cell(Board, R1, Col, Player),
+    R2 is Row + 2, cell(Board, R2, Col, Player),
+    R3 is Row + 3, cell(Board, R3, Col, Player).
+
+% diagonal down-right (\) win
+win_line(Board, Player) :-
+    between(1, 3, Row),
+    between(1, 4, Col),
+    cell(Board, Row, Col, Player),
+    Player \= empty,
+    R1 is Row + 1, C1 is Col + 1, cell(Board, R1, C1, Player),
+    R2 is Row + 2, C2 is Col + 2, cell(Board, R2, C2, Player),
+    R3 is Row + 3, C3 is Col + 3, cell(Board, R3, C3, Player).
+
+% diagonal up-right (/) win
+win_line(Board, Player) :-
+    between(4, 6, Row),
+    between(1, 4, Col),
+    cell(Board, Row, Col, Player),
+    Player \= empty,
+    R1 is Row - 1, C1 is Col + 1, cell(Board, R1, C1, Player),
+    R2 is Row - 2, C2 is Col + 2, cell(Board, R2, C2, Player),
+    R3 is Row - 3, C3 is Col + 3, cell(Board, R3, C3, Player).
+
+% game_over for a win
+game_over(state(Board, _), Winner) :-
+    win_line(Board, Winner), !.
+
+% game_over for a draw
 game_over(state(Board, _), draw) :-
-    board_full(Board).
+    \+ (nth1(_, Board, Row), nth1(_, Row, empty)),
+    \+ win_line(Board, _).
 
-% Render the board and current player
+% render_state prints the board and current player
 render_state(state(Board, Player)) :-
     maplist(render_row, Board),
-    format("Player to move: ~w~n", [Player]).
+    render_columns,
+    ( Player = red -> Abbrev = r ; Player = yellow -> Abbrev = y ),
+    format('Current player: ~w~n', [Abbrev]).
 
-% Render a single row
+% render_row prints one row of the board
 render_row(Row) :-
     maplist(render_cell, Row),
     nl.
 
-% Render a single cell
-render_cell(empty) :- format(". ").
-render_cell(red) :- format("R ").
-render_cell(yellow) :- format("Y ").
+% render_cell prints a single cell
+render_cell(Cell) :-
+    ( Cell = empty -> Symbol = '.' ;
+      Cell = red -> Symbol = r ;
+      Cell = yellow -> Symbol = y ),
+    format('~w ', [Symbol]).
+
+% render_columns prints column numbers
+render_columns :-
+    forall(between(1,7,C), format('~d ', [C])),
+    nl.

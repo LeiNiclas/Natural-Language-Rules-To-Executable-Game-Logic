@@ -295,7 +295,7 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
     r = run(multi_move_goal)
     
     if r.returncode != 0:
-        errors.append("[apply_move/3] Failed when chaining multiple moves. State may be")
+        errors.append("[apply_move/3] Failed when chaining multiple moves. State may become invalid after the first move")
     
     # Check 7: game_over/2
     r = run("(clause(game_over(_, _), _) -> halt(0) ; halt(1))")
