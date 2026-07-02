@@ -1,0 +1,3 @@
+error_stage: [render_state/1] Crashed or failed on initial_state.
+failed_checks:
+  - [render_state/1] Crashed or failed on initial_state.

@@ -1,0 +1,45 @@
+{
+  "game_name": "Nim",
+  "players": [
+    "player1",
+    "player2"
+  ],
+  "state": {
+    "description": "Heaps of counters",
+    "fields": {
+      "heaps": "list of 3 integers, each \u2265 0, number of counters in heap i. Index 1=first heap, 3=third heap."
+    }
+  },
+  "initial_state": {
+    "heaps": [
+      10,
+      6,
+      3
+    ]
+  },
+  "move": {
+    "description": "Remove counters from a single heap",
+    "parameters": {
+      "heap": "integer: index of heap to remove from (1-3)",
+      "count": "integer: number of counters to remove (\u22651, \u2264 size of chosen heap)"
+    }
+  },
+  "legal_move_conditions": [
+    "nth1(Heap, heaps, HeapCount)",
+    "Count \u2265 1",
+    "Count =< HeapCount"
+  ],
+  "apply_move_effects": [
+    "nth1(Heap, heaps, OldCount, RestHeaps)",
+    "NewCount is OldCount - Count",
+    "nth1(Heap, NewHeaps, NewCount, RestHeaps)"
+  ],
+  "turn_order": "alternating",
+  "win_conditions": [
+    "heaps = [0,0,0]"
+  ],
+  "draw_conditions": [],
+  "end_conditions": [
+    "heaps = [0,0,0]"
+  ]
+}

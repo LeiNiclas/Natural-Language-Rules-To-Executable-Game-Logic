@@ -1,0 +1,155 @@
+{
+  "game_name": "Chess",
+  "players": [
+    "white",
+    "black"
+  ],
+  "state": {
+    "description": "Complete board state including piece placement, castling rights, en passant target, move clocks, and active player",
+    "fields": {
+      "board": "list of 8 rows, each a list of 8 atoms, each empty | white_king | white_queen | white_rook | white_bishop | white_knight | white_pawn | black_king | black_queen | black_rook | black_bishop | black_knight | black_pawn. Row 1=rank8 (black back rank) at top, row 8=rank1 (white back rank) at bottom, col 1=file a left",
+      "turn": "atom white | black, the player to move",
+      "castling_rights": "list of atoms any subset of white_kingside | white_queenside | black_kingside | black_queenside representing available castling rights",
+      "en_passant_target": "null or [row,col] pair indicating square available for en passant capture",
+      "halfmove_clock": "integer, counts halfmoves since last pawn advance or capture",
+      "fullmove_number": "integer, counts full moves, incremented after Black's move"
+    }
+  },
+  "initial_state": {
+    "board": [
+      [
+        "black_rook",
+        "black_knight",
+        "black_bishop",
+        "black_queen",
+        "black_king",
+        "black_bishop",
+        "black_knight",
+        "black_rook"
+      ],
+      [
+        "black_pawn",
+        "black_pawn",
+        "black_pawn",
+        "black_pawn",
+        "black_pawn",
+        "black_pawn",
+        "black_pawn",
+        "black_pawn"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "white_pawn",
+        "white_pawn",
+        "white_pawn",
+        "white_pawn",
+        "white_pawn",
+        "white_pawn",
+        "white_pawn",
+        "white_pawn"
+      ],
+      [
+        "white_rook",
+        "white_knight",
+        "white_bishop",
+        "white_queen",
+        "white_king",
+        "white_bishop",
+        "white_knight",
+        "white_rook"
+      ]
+    ],
+    "turn": "white",
+    "castling_rights": [
+      "white_kingside",
+      "white_queenside",
+      "black_kingside",
+      "black_queenside"
+    ],
+    "en_passant_target": null,
+    "halfmove_clock": 0,
+    "fullmove_number": 1
+  },
+  "move": {
+    "description": "Move a piece from one square to another, possibly with promotion, castling, or en passant",
+    "parameters": {
+      "from_row": "integer 1-8, source row index",
+      "from_col": "integer 1-8, source column index",
+      "to_row": "integer 1-8, destination row index",
+      "to_col": "integer 1-8, destination column index",
+      "promotion": "atom none | queen | rook | bishop | knight, choice when a pawn reaches last rank"
+    }
+  },
+  "legal_move_conditions": [
+    "The square at (from_row,from_col) contains a piece of color equal to turn",
+    "The target square at (to_row,to_col) is empty or contains an opponent piece unless capturing en passant",
+    "The piece moves according to its movement pattern: king one square any direction, rook straight, bishop diagonal, queen straight or diagonal, knight in L-shape, pawn forward or diagonal capture",
+    "Non-knight pieces have a clear path between source and destination",
+    "Move does not leave or place own king in check",
+    "For castling: king moves two columns from original, involved rook has not moved, path clear, king not in, through, or into check, and castling right exists",
+    "For en passant: opponent pawn moved two squares last move ending adjacent, current pawn moves diagonally to empty square behind that pawn",
+    "For promotion: pawn reaches last rank and promotion parameter is not none"
+  ],
+  "apply_move_effects": [
+    "Move the piece from source to destination, removing any captured piece at destination or en passant target",
+    "If castling, move the rook to its square adjacent to king",
+    "If a pawn moves two squares, set en_passant_target to the passed-over square; otherwise clear en_passant_target",
+    "If en passant capture, remove the captured pawn behind destination",
+    "If promotion, replace pawn with chosen piece",
+    "Update castling_rights by removing rights if king or rook moved",
+    "Increment halfmove_clock, reset to 0 if pawn move or any capture",
+    "Increment fullmove_number after Black's move",
+    "Switch turn to the other player"
+  ],
+  "turn_order": "Players alternate turns: white then black",
+  "win_conditions": [
+    "Checkmate: opposing king is in check and has no legal moves",
+    "Resignation: a player resigns at any time"
+  ],
+  "draw_conditions": [
+    "Stalemate: player to move not in check and has no legal moves",
+    "Draw by agreement: both players agree to a draw"
+  ],
+  "end_conditions": [
+    "Game ends when a win or draw condition is met"
+  ]
+}

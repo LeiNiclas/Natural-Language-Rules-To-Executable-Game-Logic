@@ -1,0 +1,10 @@
+[SOURCE=https://wis.li/wp-content/uploads/2022/08/How-to-play-TIC-TAC-TOE.pdf]
+Play rules Tic-Tac-Toe
+* For 2 players
+Each player plays with 5 identical pieces.
+They are placed one after one
+on the playing field.
+The first player to get 3 of his marks in a row
+(up, down, across or diagonally)
+is the winner.
+When all 9 squares are full, the game is over.

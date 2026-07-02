@@ -1,0 +1,12 @@
+{
+  "rulebook_file": "checkers.txt",
+  "game_name": "checkers",
+  "config": "qwen3-coder:480b-cloud + single prolog",
+  "success": false,
+  "retries": 4,
+  "failed_checks": [
+    "[game_over/2] Predicate is not defined."
+  ],
+  "duration": 58.4,
+  "error_stage": "[game_over/2] Predicate is not defined."
+}

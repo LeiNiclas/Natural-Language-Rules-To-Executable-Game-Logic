@@ -1,0 +1,33 @@
+[SOURCE=https://www.hasbro.com/common/instruct/Checkers.PDF]
+INTRODUCTORY RULES for CHECKERS
+THE BOARD:
+The checker board is divided into 64 alternate light and dark squares.
+The game of checkers is played on the squares of one color only, and it is common practice to play on the darker colored squares.
+THE MEN:
+There are twenty-four men. One player uses twelve light colored men and the other player uses twelve dark colored men.
+SET-UP:
+The board is set between the two players so that each player has dark corner space at his left, when the play is on the dark squares.
+Each player places his twelve men on the dark squares in the first three rows in front of him. This leaves clear the two center rows.
+OBJECT:
+The object of the game is to capture all of the opponent's men or else to confine them so that the opponent has no possible move.
+If neither player can do either of these things the game becomes a draw.
+PLAY:
+For the first game draw lots to determine which player has the choice
+of color of men. In following games players alternately use the dark and light sets of men.
+The dark men always have the first move.
+The movement of one man by a player, employing either the Simple Move or Jump, constitutes his turn.
+SIMPLE MOVE:
+As the men never leave the color upon which they are first placed,
+all moves must be diagonal. A man can move only one square at a time,
+and only to a square diagonally in front of him (in the direction of his opponent's side of the board).
+JUMP:
+If the square to which a man might move is occupied by an opponent's
+man, this man may jump the opponent's man if there is a vacant square immediately beyond it. Two or more men may sometimes be jumped in
+succession on a single turn if the opponent's men are in proper position.
+All men jumped are removed from the board.
+When a player has an opportunity to jump an opponent's piece MUST do so.
+If a player has two or more different opportunities to jump on turn, he may take the jump he chooses.
+KING:
+When a man reaches one of the squares in the last row across the
+board from where it started, it is made a King by placing one of the previously captured men of the same color on it.
+Kings can move and jump diagonally either forward or backward.

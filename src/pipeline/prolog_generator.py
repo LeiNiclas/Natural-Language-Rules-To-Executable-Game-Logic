@@ -230,55 +230,67 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
         f.write(prolog_code)
         tmp = f.name
     
-    def run(goal : str) -> subprocess.CompletedProcess:
-        return subprocess.run(
-            ["swipl", "-g", goal, "-t", "halt(1)", tmp],
-            capture_output=True, text=True, timeout=config.SWIPL_TIMEOUT
-        )
+    def run(goal : str) -> subprocess.CompletedProcess | None:
+        try:
+            return subprocess.run(
+                ["swipl", "-g", goal, "-t", "halt(1)", tmp],
+                capture_output=True, text=True, timeout=config.SWIPL_TIMEOUT
+            )
+        except subprocess.TimeoutExpired:
+            errors.append(f"[Timeout] Goal timed out after {config.SWIPL_TIMEOUT}s: {goal}")
+            return None
     
     # Check 1: Load
     r = run("halt")
     
-    if r.returncode != 0:
-        errors.append(f"[Load error]\n{r.stderr.strip()}")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append(f"[Load error]\n{r.stderr.strip()}")
         os.unlink(tmp)
         return False, errors
     
     # Check 2a: initial_state/1
     r = run("(initial_state(_) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append("[initial_state/1] Did not succeed.")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[initial_state/1] Did not succeed.")
+        os.unlink(tmp)
+        return False, errors
     
     # Check 2b: initial_state produces a fully ground term
     r = run("(initial_state(S), ground(S) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append(
-            "[initial_state/1] State contains unbound variables. "
-            "Use explicit list literals instead of maplist/length to initialize boards. "
-            "Example: Board = [empty,empty,empty,...] with exact length."
-        )
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append(
+                "[initial_state/1] State contains unbound variables. "
+                "Use explicit list literals instead of maplist/length to initialize boards. "
+                "Example: Board = [empty,empty,empty,...] with exact length."
+            )
         os.unlink(tmp)
         return False, errors
     
     # Check 3: legal_move/2
     r = run("(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append("[legal_move/2] No legal moves from initial state.")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[legal_move/2] No legal moves from initial state.")
     
     # Check 4: apply_move/3
     r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, _) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append("[apply_move/3] Failed on first legal move from initial state.")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[apply_move/3] Failed on first legal move from initial state.")
     
     # Check 5: render_state/1 
     r = run("(initial_state(S), render_state(S), halt(0))")
     
-    if r.returncode != 0:
-        errors.append("[render_state/1] Crashed or failed on initial_state.")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[render_state/1] Crashed or failed on initial_state.")
     else:
         if "_G" in r.stdout or "_A" in r.stdout:
             errors.append("[render_state/1] Output contains unbound variables (e.g. _G123). State fields may not be fully instantiated.")
@@ -294,24 +306,27 @@ def _validate_prolog(prolog_code : str) -> tuple[bool, list[str]]:
 
     r = run(multi_move_goal)
     
-    if r.returncode != 0:
-        errors.append("[apply_move/3] Failed when chaining multiple moves. State may become invalid after the first move")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[apply_move/3] Failed when chaining multiple moves. State may become invalid after the first move")
     
     # Check 7: game_over/2
     r = run("(clause(game_over(_, _), _) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append("[game_over/2] Predicate is not defined.")
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append("[game_over/2] Predicate is not defined.")
     
     # Check 8: Unbound variables in state after apply_move
     r = run("(initial_state(S), legal_move(S, M), apply_move(S, M, S2), ground(S2) -> halt(0) ; halt(1))")
     
-    if r.returncode != 0:
-        errors.append(
-            "[apply_move/3] New state contains unbound variables. "
-            "All state fields must be fully instantiated after a move. "
-            "Check that every field in NewState is explicitly set."
-        )
+    if r is None or r.returncode != 0:
+        if r is not None:
+            errors.append(
+                "[apply_move/3] New state contains unbound variables. "
+                "All state fields must be fully instantiated after a move. "
+                "Check that every field in NewState is explicitly set."
+            )
     
     os.unlink(tmp)
     return len(errors) == 0, errors

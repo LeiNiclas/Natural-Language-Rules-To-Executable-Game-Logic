@@ -1,0 +1,10 @@
+{
+  "rulebook_file": "reversi.txt",
+  "game_name": "reversi",
+  "config": "qwen3-coder:480b-cloud + multi prolog",
+  "success": false,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 68.8,
+  "error_stage": "max retries exceeded (no error detail - multi-stage generation)"
+}

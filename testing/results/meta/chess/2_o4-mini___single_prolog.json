@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "chess.txt",
+  "game_name": "chess",
+  "config": "o4-mini + single prolog",
+  "success": true,
+  "retries": 1,
+  "failed_checks": [],
+  "duration": 30.2
+}

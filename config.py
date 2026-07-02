@@ -21,7 +21,7 @@ MODEL_PROLOG_GENERATOR      = "o4-mini" # qwen3-coder:480b-cloud
 # Pipeline settings
 RULEBOOK_MAX_RETRIES    = 5 # How many times to retry rulebook generation on validation failure
 PROLOG_MAX_RETRIES      = 5 # How many times to retry Prolog generation on validation failure
-SWIPL_TIMEOUT           = 5 # Seconds before a Prolog validation call is killed
+SWIPL_TIMEOUT           = 10 # Seconds before a Prolog validation call is killed
 PROLOG_USE_DESIGN_PLAN  = False
 PROLOG_USE_MULTISTAGE = True
 

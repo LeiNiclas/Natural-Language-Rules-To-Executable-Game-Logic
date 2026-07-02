@@ -1,0 +1,10 @@
+{
+  "rulebook_file": "nim.txt",
+  "game_name": "nim",
+  "config": "qwen3-coder:480b-cloud + multi prolog + design plan",
+  "success": false,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 19.1,
+  "error_stage": "max retries exceeded (no error detail - multi-stage generation)"
+}

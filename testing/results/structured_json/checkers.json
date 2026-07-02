@@ -1,0 +1,135 @@
+{
+  "game_name": "Checkers",
+  "players": [
+    "light",
+    "dark"
+  ],
+  "state": {
+    "description": "Current board configuration and player to move",
+    "fields": {
+      "board": "list of 8 rows, each a list of 8 atoms, each empty | light_man | dark_man | light_king | dark_king. Row 1=top, Col 1=left",
+      "current_player": "atom light | dark"
+    }
+  },
+  "initial_state": {
+    "board": [
+      [
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man"
+      ],
+      [
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty"
+      ],
+      [
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man",
+        "empty",
+        "dark_man"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty"
+      ],
+      [
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man"
+      ],
+      [
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty",
+        "light_man",
+        "empty"
+      ]
+    ],
+    "current_player": "dark"
+  },
+  "move": {
+    "description": "A player moves one piece either by a simple diagonal step or by jumping an opponent piece",
+    "parameters": {
+      "from_row": "integer 1-8, row index of the piece to move",
+      "from_col": "integer 1-8, column index of the piece to move",
+      "to_row": "integer 1-8, destination row",
+      "to_col": "integer 1-8, destination column"
+    }
+  },
+  "legal_move_conditions": [
+    "Piece at (FromRow,FromCol) belongs to CurrentPlayer",
+    "Target square (ToRow,ToCol) is empty",
+    "Move is diagonal: abs(ToRow-FromRow)=abs(ToCol-FromCol)",
+    "For a man simple move: abs(ToRow-FromRow)=1 and moving forward (dark man ToRow=FromRow+1, light man ToRow=FromRow-1)",
+    "For a king simple move: abs(ToRow-FromRow)=1",
+    "Jump move allowed if abs(ToRow-FromRow)=2 and the intermediate square contains opponent piece",
+    "If any capture move exists for CurrentPlayer, the move must be a jump"
+  ],
+  "apply_move_effects": [
+    "Move piece from (FromRow,FromCol) to (ToRow,ToCol)",
+    "If jump: remove opponent piece at intermediate square",
+    "If a man reaches promotion row (row 8 for dark, row 1 for light): replace it with king version",
+    "If a jump was made and further jumps are possible for the moved piece, CurrentPlayer remains the same, otherwise switch CurrentPlayer"
+  ],
+  "turn_order": "Players alternate turns; dark begins; multiple jumps by the same piece in one turn are resolved before switching",
+  "win_conditions": [
+    "Opponent has no pieces",
+    "Opponent has no legal moves"
+  ],
+  "draw_conditions": [
+    "Neither player has any jump (capture) moves available"
+  ],
+  "end_conditions": [
+    "Win condition met",
+    "Draw condition met"
+  ]
+}

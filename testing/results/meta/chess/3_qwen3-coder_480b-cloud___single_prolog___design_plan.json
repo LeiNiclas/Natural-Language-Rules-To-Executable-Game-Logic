@@ -1,0 +1,12 @@
+{
+  "rulebook_file": "chess.txt",
+  "game_name": "chess",
+  "config": "qwen3-coder:480b-cloud + single prolog + design plan",
+  "success": false,
+  "retries": 4,
+  "failed_checks": [
+    "[render_state/1] Crashed or failed on initial_state."
+  ],
+  "duration": 622.8,
+  "error_stage": "[render_state/1] Crashed or failed on initial_state."
+}

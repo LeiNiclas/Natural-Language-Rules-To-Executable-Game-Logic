@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "checkers.txt",
+  "game_name": "checkers",
+  "config": "o4-mini + multi prolog",
+  "success": true,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 89.8
+}

@@ -1,0 +1,14 @@
+{
+  "rulebook_file": "connect_four.txt",
+  "game_name": "connect_four",
+  "config": "qwen3-coder:480b-cloud + single prolog",
+  "success": false,
+  "retries": 4,
+  "failed_checks": [
+    "[apply_move/3] Failed on first legal move from initial state.",
+    "[apply_move/3] Failed when chaining multiple moves. State may become invalid after the first move",
+    "[apply_move/3] New state contains unbound variables. All state fields must be fully instantiated after a move. Check that every field in NewState is explicitly set."
+  ],
+  "duration": 49.4,
+  "error_stage": "[apply_move/3] Failed on first legal move from initial state.; [apply_move/3] Failed when chaining multiple moves. State may become invalid after the first move; [apply_move/3] New state contains unbound variables. All state fields must be fully instantiated after a move. Check that every field in NewState is explicitly set."
+}

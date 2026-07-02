@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "tic_tac_toe.txt",
+  "game_name": "tic_tac_toe",
+  "config": "o4-mini + single prolog",
+  "success": true,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 18.8
+}

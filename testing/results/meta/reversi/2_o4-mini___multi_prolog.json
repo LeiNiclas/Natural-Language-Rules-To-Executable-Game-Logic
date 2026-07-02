@@ -1,0 +1,10 @@
+{
+  "rulebook_file": "reversi.txt",
+  "game_name": "reversi",
+  "config": "o4-mini + multi prolog",
+  "success": false,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 139.2,
+  "error_stage": "max retries exceeded (no error detail - multi-stage generation)"
+}

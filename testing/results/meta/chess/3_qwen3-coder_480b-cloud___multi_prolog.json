@@ -1,0 +1,10 @@
+{
+  "rulebook_file": "chess.txt",
+  "game_name": "chess",
+  "config": "qwen3-coder:480b-cloud + multi prolog",
+  "success": false,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 26.3,
+  "error_stage": "exception: TimeoutExpired: Command '['swipl', '-g', '(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))', '-t', 'halt(1)', 'C:\\\\Users\\\\Nicla\\\\AppData\\\\Local\\\\Temp\\\\tmplmutny9g.pl']' timed out after 10 seconds"
+}

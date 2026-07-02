@@ -1,0 +1,25 @@
+[SOURCE=https://brainking.com/en/GameRules?tp=11]
+Reversi
+Start position and game object
+The game is played on an 8x8 board.
+The object of this game is to have more pieces on the board than your opponent.
+The game ends when all squares are occupied by pieces or no player can make a legal move.
+
+How to place pieces
+
+Reversi is played with special pieces, one side is white and the other side is black.
+If the player is to move, he/she places a piece on the game board with his/her color facing up.
+The player cannot place a piece anywhere - he/she must capture one or more opponent's pieces by each move.
+Captured pieces are turned over (their color changes) and become the player's pieces.
+If the player cannot capture any opponent's piece in the current position, he/she must pass this move to the opponent.
+The only exception are the first two moves when no piece can be captured and both players must place the pieces on four circles in the center of the board.
+After all four circles are occupied, the rules How to capture opponent's pieces (see below) are applied.
+
+
+How to capture opponent's pieces
+The player must place his/her piece to surround horizontally, vertically or diagonally a solid row of opponent's pieces by his/her two pieces.
+
+Other important rules
+If the player cannot make a legal move, the other player is to make a move again.
+The previous rule is not applied if the opponent cannot make a legal move as well.
+In such situation, the game is automatically finished.

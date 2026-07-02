@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "reversi.txt",
+  "game_name": "reversi",
+  "config": "o4-mini + single prolog",
+  "success": true,
+  "retries": 1,
+  "failed_checks": [],
+  "duration": 55.4
+}

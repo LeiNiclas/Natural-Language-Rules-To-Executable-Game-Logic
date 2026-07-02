@@ -1,0 +1,1 @@
+error_stage: exception: TimeoutExpired: Command '['swipl', '-g', '(initial_state(S), legal_move(S, _) -> halt(0) ; halt(1))', '-t', 'halt(1)', 'C:\\Users\\Nicla\\AppData\\Local\\Temp\\tmplmutny9g.pl']' timed out after 10 seconds

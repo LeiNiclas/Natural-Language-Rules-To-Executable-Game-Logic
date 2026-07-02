@@ -1,0 +1,1 @@
+error_stage: exception: ResponseError: you (niclasleinen) have reached your weekly usage limit, upgrade for higher limits: https://ollama.com/upgrade (ref: af96c83c-687a-4d79-94a4-fd48037fe5b1) (status code: 429)

@@ -1,0 +1,60 @@
+{
+  "game_name": "Tic-Tac-Toe",
+  "players": [
+    "x",
+    "o"
+  ],
+  "state": {
+    "description": "The board positions and the player to move",
+    "fields": {
+      "board": "flat list of 9 atoms, each empty | x | o. Index 1=top-left, 9=bottom-right.",
+      "current_player": "atom, x | o, the player whose turn it is"
+    }
+  },
+  "initial_state": {
+    "board": [
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty",
+      "empty"
+    ],
+    "current_player": "x"
+  },
+  "move": {
+    "description": "Place the current player's mark on an empty square",
+    "parameters": {
+      "Position": "integer 1..9, the board index"
+    }
+  },
+  "legal_move_conditions": [
+    "integer(Position), Position >= 1, Position =< 9",
+    "nth1(Position, Board, empty)"
+  ],
+  "apply_move_effects": [
+    "replace_nth1(Position, Board, CurrentPlayer, NewBoard)",
+    "CurrentPlayer = x -> NewCurrentPlayer = o ; NewCurrentPlayer = x"
+  ],
+  "turn_order": "Alternate starting with x",
+  "win_conditions": [
+    "nth1(1,Board,X), nth1(2,Board,X), nth1(3,Board,X), X \\= empty",
+    "nth1(4,Board,X), nth1(5,Board,X), nth1(6,Board,X), X \\= empty",
+    "nth1(7,Board,X), nth1(8,Board,X), nth1(9,Board,X), X \\= empty",
+    "nth1(1,Board,X), nth1(4,Board,X), nth1(7,Board,X), X \\= empty",
+    "nth1(2,Board,X), nth1(5,Board,X), nth1(8,Board,X), X \\= empty",
+    "nth1(3,Board,X), nth1(6,Board,X), nth1(9,Board,X), X \\= empty",
+    "nth1(1,Board,X), nth1(5,Board,X), nth1(9,Board,X), X \\= empty",
+    "nth1(3,Board,X), nth1(5,Board,X), nth1(7,Board,X), X \\= empty"
+  ],
+  "draw_conditions": [
+    "not(member(empty,Board))"
+  ],
+  "end_conditions": [
+    "win",
+    "draw"
+  ]
+}

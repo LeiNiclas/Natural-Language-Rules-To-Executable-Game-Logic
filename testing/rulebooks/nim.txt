@@ -1,0 +1,7 @@
+[SOURCE=https://wild.maths.org/play-win-nim]
+The rules of Nim
+The traditional game of Nim is played with a number of counters arranged in heaps:
+the number of counters and heaps is as follows: 3 Heaps with 10, 6, 3 coins.
+There are two players. When it's a player's move he or she can take any number of coins from a single heap.
+They have to take at least one coin, though, and they can't take coins from more than one heap.
+The winner is the player who makes the last move, so there are no coins left after that move.

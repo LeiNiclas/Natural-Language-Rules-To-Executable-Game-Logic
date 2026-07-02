@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "chess.txt",
+  "game_name": "chess",
+  "config": "qwen3-coder:480b-cloud + single prolog",
+  "success": true,
+  "retries": 1,
+  "failed_checks": [],
+  "duration": 55.8
+}

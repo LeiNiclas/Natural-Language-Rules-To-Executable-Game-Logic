@@ -1,0 +1,129 @@
+{
+  "game_name": "Reversi",
+  "players": [
+    "black",
+    "white"
+  ],
+  "state": {
+    "description": "Current board configuration and player to move",
+    "fields": {
+      "board": "list of 8 rows, each a list of 8 atoms: empty | black | white. Row 1=top, Col 1=left.",
+      "current_player": "atom, black | white, the player to move"
+    }
+  },
+  "initial_state": {
+    "board": [
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "white",
+        "black",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "black",
+        "white",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ]
+    ],
+    "current_player": "black"
+  },
+  "move": {
+    "description": "Place a piece of current_player's color or pass if no placements are legal",
+    "parameters": {
+      "action": "atom, either place or pass",
+      "row": "integer 1-8; required if action=place",
+      "col": "integer 1-8; required if action=place"
+    }
+  },
+  "legal_move_conditions": [
+    "If action = place, cell at (row,col) is empty",
+    "If action = place, there exists at least one of the eight directions where a contiguous line of opponent pieces is immediately followed by a current_player piece",
+    "If action = pass, no legal place moves exist for current_player",
+    "If there is at least one legal place move for current_player, action must be place"
+  ],
+  "apply_move_effects": [
+    "If action = place, set board[row][col] = current_player",
+    "If action = place, for each direction with a contiguous line of opponent pieces ending in current_player, flip all those opponent pieces",
+    "Switch current_player to the opponent"
+  ],
+  "turn_order": "Players alternate turns; a pass is still a turn; if both players have no legal moves, game ends",
+  "win_conditions": [
+    "At game end, the player with more pieces on the board wins"
+  ],
+  "draw_conditions": [
+    "At game end, both players have an equal number of pieces"
+  ],
+  "end_conditions": [
+    "All squares are occupied",
+    "Neither player has a legal place move"
+  ]
+}

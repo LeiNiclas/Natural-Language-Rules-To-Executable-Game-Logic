@@ -1,0 +1,102 @@
+{
+  "game_name": "Connect Four",
+  "players": [
+    "red",
+    "yellow"
+  ],
+  "state": {
+    "description": "Current state of the Connect Four game",
+    "fields": {
+      "board": "list of 6 rows, each a list of 7 atoms, each empty | red | yellow. Row 1=top, Col 1=left",
+      "current_player": "atom, either red or yellow, indicates whose turn it is"
+    }
+  },
+  "initial_state": {
+    "board": [
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ],
+      [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty"
+      ]
+    ],
+    "current_player": "red"
+  },
+  "move": {
+    "description": "Drop one checker into the specified column",
+    "parameters": {
+      "column": "integer between 1 and 7 representing the column to drop into"
+    }
+  },
+  "legal_move_conditions": [
+    "column(Column), Column >= 1, Column =< 7",
+    "nth1(1, Board, TopRow), nth1(Column, TopRow, Cell), Cell = empty"
+  ],
+  "apply_move_effects": [
+    "Let Row be the highest index from 6 down to 1 such that nth1(Row, Board, RowList), nth1(Column, RowList, empty)",
+    "Update Board by setting the cell at (Row, Column) to current_player",
+    "Set current_player to the other player (if red then yellow else red)"
+  ],
+  "turn_order": "Players alternate turns",
+  "win_conditions": [
+    "There exist Row, Col such that cells at (Row,Col),(Row,Col+1),(Row,Col+2),(Row,Col+3) are equal to current_player",
+    "There exist Row, Col such that cells at (Row,Col),(Row+1,Col),(Row+2,Col),(Row+3,Col) are equal to current_player",
+    "There exist Row, Col such that cells at (Row,Col),(Row+1,Col+1),(Row+2,Col+2),(Row+3,Col+3) are equal to current_player",
+    "There exist Row, Col such that cells at (Row,Col),(Row-1,Col+1),(Row-2,Col+2),(Row-3,Col+3) are equal to current_player"
+  ],
+  "draw_conditions": [
+    "All cells in Board are not empty and no win condition holds"
+  ],
+  "end_conditions": [
+    "A player satisfies a win condition",
+    "Draw condition is met"
+  ]
+}

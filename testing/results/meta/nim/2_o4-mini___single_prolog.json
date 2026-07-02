@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "nim.txt",
+  "game_name": "nim",
+  "config": "o4-mini + single prolog",
+  "success": true,
+  "retries": 2,
+  "failed_checks": [],
+  "duration": 44.8
+}

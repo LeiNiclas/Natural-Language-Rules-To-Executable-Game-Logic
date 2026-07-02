@@ -1,0 +1,9 @@
+{
+  "rulebook_file": "connect_four.txt",
+  "game_name": "connect_four",
+  "config": "o4-mini + single prolog",
+  "success": true,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 38.7
+}

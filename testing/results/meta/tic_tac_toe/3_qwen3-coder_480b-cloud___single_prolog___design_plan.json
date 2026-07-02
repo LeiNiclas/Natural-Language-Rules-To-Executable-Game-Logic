@@ -1,0 +1,14 @@
+{
+  "rulebook_file": "tic_tac_toe.txt",
+  "game_name": "tic_tac_toe",
+  "config": "qwen3-coder:480b-cloud + single prolog + design plan",
+  "success": false,
+  "retries": 4,
+  "failed_checks": [
+    "[legal_move/2] No legal moves from initial state.",
+    "[apply_move/3] Failed on first legal move from initial state.",
+    "[apply_move/3] New state contains unbound variables. All state fields must be fully instantiated after a move. Check that every field in NewState is explicitly set."
+  ],
+  "duration": 32.7,
+  "error_stage": "[legal_move/2] No legal moves from initial state.; [apply_move/3] Failed on first legal move from initial state.; [apply_move/3] New state contains unbound variables. All state fields must be fully instantiated after a move. Check that every field in NewState is explicitly set."
+}
