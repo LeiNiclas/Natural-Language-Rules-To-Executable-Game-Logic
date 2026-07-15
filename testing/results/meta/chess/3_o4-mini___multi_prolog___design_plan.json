@@ -1,0 +1,10 @@
+{
+  "rulebook_file": "chess.txt",
+  "game_name": "chess",
+  "config": "o4-mini + multi prolog + design plan",
+  "success": false,
+  "retries": 0,
+  "failed_checks": [],
+  "duration": 409.6,
+  "error_stage": "exception: TimeoutExpired: Command '['swipl', '-g', 'initial_state(S0), (legal_move(S0,M0)->apply_move(S0,M0,S1);S1=S0), (legal_move(S1,M1)->apply_move(S1,M1,S2);S2=S1), (legal_move(S2,M2)->apply_move(S2,M2,_);true), halt(0)', '-t', 'halt(1)', 'C:\\\\Users\\\\Nicla\\\\AppData\\\\Local\\\\Temp\\\\tmpgmkw6i15.pl']' timed out after 10 seconds"
+}
