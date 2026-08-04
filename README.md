@@ -20,7 +20,7 @@ Prolog is a logic-based programming language, which forces the LLM to "think" in
 For example, LLMs are trained primarily on imperative and functional languages, where a function like `next_player(p1)` *returns* a value. In Prolog, however, predicates do not return anything; they succeed or fail based on unification. A model that defaults to its imperative intuition might generate `Next = next_player(Player)` instead of the correct `next_player(Player, Next)`, which compiles but silently fails at runtime. Avoiding this class of mistake requires the model to consistently apply Prolog's relational reasoning rather than falling back on patterns learned from other paradigms.
 
 ## Pipeline architecture
-The generation pipeline consists of the following steps: (Optional: Rule generation $\rarr$ Rule verification $\rarr$) JSON structuring $\rarr$ (Optional: Design plan $\rarr$) Prolog generation $\rarr$ validation / retry loop.
+The generation pipeline consists of the following steps: (Optional: Rule generation &rarr; Rule verification &rarr;) JSON structuring &rarr; (Optional: Design plan &rarr;) Prolog generation &rarr; validation / retry loop.
 
 ### 0. Rule generation / verification (Optional)
 These steps are only used if the input is not already a rulebook, i.e. when the user provides only the name of a game. In the generation step, the chosen LLM generates natural language rules for the given game (if it recognizes the name); in the verification step, a (possibly different) LLM checks the completeness and correctness of the generated rules. If the rules are found to be invalid, a corrected version is proposed and re-verifier up to a configurable maximum number of retries.
