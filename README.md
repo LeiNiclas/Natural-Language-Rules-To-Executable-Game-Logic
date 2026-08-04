@@ -3,7 +3,7 @@
 Beginners practical \
 Summer Term 2026 \
 Niclas Leinen (niclas.leinen@stud.uni-heidelberg.de) \
-Mehdi Mohammad Khorrami (mohammad.khorrami@stud.uni-heidelberg.de)
+Mohammad Mehdi Khorrami (mohammad.khorrami@stud.uni-heidelberg.de)
 
 ## Motivation
 ProloGame investigates the ability of Large Language Models (LLMs) to translate natural language rules into playable games, using SWI-Prolog as the underlying game-state engine.
