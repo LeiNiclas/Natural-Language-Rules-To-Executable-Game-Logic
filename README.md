@@ -1,4 +1,4 @@
-# ProloGame - From natural language rules to executable game logic
+# ProloGame - From Natural Language Rules to Executable Game Logic
 
 Beginners practical \
 Summer Term 2026 \
@@ -74,16 +74,26 @@ All testing takes place in the [benchmark notebook](notebooks/benchmark.ipynb) b
 ### o4-mini vs. qwen3-coder
 Overall, o4-mini performed significantly better and was more reliable than qwen3-coder, with the total success rates being 86.1% and 58.3% respectively. qwen3-coder only managed to create three error-free implementations of a game six out of 24 times, whereas o4-mini hit a success rate of 100% for 17 out of 24 games, generating flawless implementations for checkers and nim regardless of the configuration given. The only game o4-mini struggled with was chess with a 0% success rate for the `multi prolog + design plan` configuration.
 
+![plot 1](./meta/success_rate_by_config_plot.png)
+
 Regarding the overall consistency, o4-mini always managed to generate at least 3 games for 3 separate runs without errors, whereas qwen3-coder struggled with at least 2 games for 3 separate runs, producing mixed results (mix of pass / fail), the worst consistency coming from the multi-stage generation, where qwen3-coder only produced mixed-validity results for 5 games and 100% failing results for 1 game. 
+
+![plot 2](./meta/success_rate_game_x_config_plot.png)
 
 ### single-stage vs. multi-stage prolog
 Using single-stage or multi-stage prolog generation did not seem to make a significant impact on the validity of the output, as single-stage generation has a 72.2% (52 out of 72 runs) success rate and multi-stage follows closely with 70.8% (51 out of 72 runs). Nevertheless, some differences can be seen in the success rate per game regarding the generation mode: more complex games like chess, checkers and reversi were generated more successfully using the single-stage mode rather than the multi-stage mode. On the other hand, multi-stage generation produced more reliable results for simpler games like connect four and tic-tac-toe.
 
+![plot 3](./meta/single_vs_multi_prolog_plot.png)
+
 ### Influence of the design plan
 For most games, the design plan had minimal beneficial to no impact at all, with nim profiting the most of the usage (50.0% vs. 83.3%), whereas a bigger negative influence can be seen for chess, with a 50.0% decrease in success rate from the 66.7% that was achieved without a design plan.
 
+![plot 4](./meta/influence_of_design_plan_plot.png)
+
 ### Most common error sources
 The most common issue by far was the `apply_move` check, which failed in 72.7% of all failed runs (40 out of 55). Note that because the validator re-derives a legal move before testing `aaply_move`, any run that fails the `legal_move` check necessarily also fails the `apply_move` check - the two counts are not independent, and the true `apply_move`-specific failure rate is lower than this number suggests. `legal_move` itself was the primary blocker in 20% (11 out of 55) of failed runs, `render_state` in 5% (3 out of 55) and `game_over` in 2% (1 out of 55).
+
+![plot 5](./meta/failed_checks_by_game_plot.png)
 
 ## Key Learnings
 ### Prolog-specific failure patterns
@@ -131,7 +141,7 @@ While the current benchmark provides a solid basis for comparing LLM configurati
 - `plotly`: Result visualization in the benchmark notebook
 - `jupyter`: For running the benchmark notebooks
 
-(See `REQUIREMENTS.txt` for the full, pinned list)
+(See `requirements.txt` for the full list)
 
 ### Setup
 1. Clone the repository:
