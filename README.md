@@ -10,7 +10,7 @@ ProloGame investigates the ability of Large Language Models (LLMs) to translate 
 
 Board games like chess, connect four or checkers can formally be described using a manageable set of state and move rules. Prolog, as a declarative, logic-based programming language, is a perfect match for this kind of ruleset: Game states, legal moves and win conditions can all be expressed as facts and clauses without having to explicitly program the control flow.
 
-The central research question this practical aims to answer is therefore: How accurately and reliably can different LLM-configurations (Choice of model, generation strategy) generate executable Prolog code from game rules written in natural language?
+The central research question this practical aims to answer is therefore: How accurately and reliably can different LLM-configurations (choice of model, generation strategy) generate executable Prolog code from game rules written in natural language?
 
 To answer this question, we developed a benchmark framework that tests and validates generation of six games across two models and four configurations each. Additionally, we provide a Streamlit application that supports custom game generation from either (A) user-provided game rules or (B) simply the name of a board game, as well as interactive play of the generated games.
 
@@ -50,7 +50,7 @@ In both modes, the LLM is given a predefined framework it must implement, consis
 Once the code has been fully generated, it is run through a series of checks that verify basic functionality and confirm that the predicates above behave correctly to a certain degree. In single-stage mode, this validation runs once after generation, with a configurable number of retries on failure. In multi-stage mode, each of the five stages is already validated incrementally as it is generated; the final stage's validation subsumes all check from earlier stages, so no separate validation pass is needed afterward.
 
 ## Benchmark Setup
-All testing takes place in the [benchmark notebook](notebooks/benchmark.ipynb) benchmark jupyter notebook. For the benchmark, we tested two LLM models with four different configurations each over six games. Each model was given the same rulebook and design plan for each game and ran the generation pipeline three times per game, which produced 2 models $\times$ 4 configs $\times$ 6 games $\times$ 3 runs = 144 results.
+All testing takes place in the [benchmark notebook](./notebooks/benchmark.ipynb) benchmark jupyter notebook. For the benchmark, we tested two LLM models with four different configurations each over six games. Each model was given the same rulebook and design plan for each game and ran the generation pipeline three times per game, which produced 2 models $\times$ 4 configs $\times$ 6 games $\times$ 3 runs = 144 results.
 
 ### Models
 - `qwen3-coder:480b-cloud`
@@ -62,13 +62,13 @@ All testing takes place in the [benchmark notebook](notebooks/benchmark.ipynb) b
 - `multi prolog`
 - `multi prolog + design plan`
 
-### Games
-- Checkers
-- Chess
-- Connect Four
-- Nim
-- Reversi
-- Tic-Tac-Toe
+### Games (Links refer to the used rulebooks)
+- [Checkers](./testing/rulebooks/checkers.txt) 
+- [Chess](./testing/rulebooks/chess.txt)
+- [Connect Four](./testing/rulebooks/connect_four.txt)
+- [Nim](./testing/rulebooks/nim.txt)
+- [Reversi](./testing/rulebooks/reversi.txt)
+- [Tic-Tac-Toe](./testing/rulebooks/tic_tac_toe.txt)
 
 ## Results
 ### o4-mini vs. qwen3-coder
@@ -158,7 +158,7 @@ swipl --version
 
 3. Install Python dependencies:
 ```bash
-pip install -r REQUIREMENTS.txt
+pip install -r requirements.txt
 ```
 
 4. Set up model access:
