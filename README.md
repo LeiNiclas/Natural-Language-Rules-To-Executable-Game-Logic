@@ -15,7 +15,7 @@ The central research question this practical aims to answer is therefore: How ac
 To answer this question, we developed a benchmark framework that tests and validates generation of six games across two models and four configurations each. Additionally, we provide a Streamlit application that supports custom game generation from either (A) user-provided game rules or (B) simply the name of a board game, as well as interactive play of the generated games.
 
 ## Why Prolog?
-Prolog is a logic-based programming language, which forces the LLM to "think" in terms of logical relationships rather than sequential instructions. This makes the model's reasoning abilty a deciding factor for code quality, since it must satisfy several interdependent constraints that together determine the game's control flow.
+Prolog is a logic-based programming language, which forces the LLM to "think" in terms of logical relationships rather than sequential instructions. This makes the model's reasoning ability a deciding factor for code quality, since it must satisfy several interdependent constraints that together determine the game's control flow.
 
 For example, LLMs are trained primarily on imperative and functional languages, where a function like `next_player(p1)` *returns* a value. In Prolog, however, predicates do not return anything; they succeed or fail based on unification. A model that defaults to its imperative intuition might generate `Next = next_player(Player)` instead of the correct `next_player(Player, Next)`, which compiles but silently fails at runtime. Avoiding this class of mistake requires the model to consistently apply Prolog's relational reasoning rather than falling back on patterns learned from other paradigms.
 
@@ -23,13 +23,13 @@ For example, LLMs are trained primarily on imperative and functional languages, 
 The generation pipeline consists of the following steps: (Optional: Rule generation &rarr; Rule verification &rarr;) JSON structuring &rarr; (Optional: Design plan &rarr;) Prolog generation &rarr; validation / retry loop.
 
 ### 0. Rule generation / verification (Optional)
-These steps are only used if the input is not already a rulebook, i.e. when the user provides only the name of a game. In the generation step, the chosen LLM generates natural language rules for the given game (if it recognizes the name); in the verification step, a (possibly different) LLM checks the completeness and correctness of the generated rules. If the rules are found to be invalid, a corrected version is proposed and re-verifier up to a configurable maximum number of retries.
+These steps are only used if the input is not already a rulebook, i.e. when the user provides only the name of a game. In the generation step, the chosen LLM generates natural language rules for the given game (if it recognizes the name); in the verification step, a (possibly different) LLM checks the completeness and correctness of the generated rules. If the rules are found to be invalid, a corrected version is proposed and re-verified up to a configurable maximum number of retries.
 
 ### 1. JSON structuring
 Games can become complex quickly, and in Prolog, keeping track of what each predicate means and how it connects to the others can be difficult for an LLM to maintain across a long generation. To mitigate this, we structure the core aspects of the game into predefined JSON properties, e.g. `initial_state` or `win_conditions`.
 
 ### 1.b Design plan (Optional)
-To further improve code-quality, a separate LLM call produces a "design plan" - a more detailed, step-by-step description of how to implement specific parts of the Prolog code, e.g. "Conditions for move legality: 1. ...". This plan is then forwarded to the next step together with the structured json output.
+To further improve code-quality, a separate LLM call produces a "design plan" - a more detailed, step-by-step description of how to implement specific parts of the Prolog code, e.g. "Conditions for move legality: 1. ...". This plan is then forwarded to the next step together with the structured JSON output.
 
 ### 2. Prolog generation
 The Prolog generator takes the structured JSON (and design plan, if available) from the previous stages and converts it into Prolog code. Depending on the configuration, the code is generated either all at once (single step) or incrementally (multiple steps):
@@ -47,10 +47,10 @@ In both modes, the LLM is given a predefined framework it must implement, consis
 - `render_state`
 
 ### 3. Validation
-Once the code has been fully generated, it is run through a series of checks that verify basic functionality and confirm that the predicates above behave correctly to a certain degree. In single-stage mode, this validation runs once after generation, with a configurable number of retries on failure. In multi-stage mode, each of the five stages is already validated incrementally as it is generated; the final stage's validation subsumes all check from earlier stages, so no separate validation pass is needed afterward.
+Once the code has been fully generated, it is run through a series of limited structural and reachability checks. These checks verify that the code loads, that the initial state is fully ground, that at least one legal move exists, that one or several moves can be applied, that the initial state can be rendered, and that `game_over/2` is defined. They do not verify `current_player/2`, the completeness or correctness of all legal moves, rejection of illegal moves, actual win or draw semantics, or complete games through to termination. In single-stage mode, this validation runs once after generation, with a configurable number of retries on failure. In multi-stage mode, each of the five stages is validated incrementally as it is generated; the final stage's validation includes the checks from earlier stages, so no separate validation pass is needed afterward.
 
 ## Benchmark Setup
-All testing takes place in the [benchmark notebook](./notebooks/benchmark.ipynb) benchmark jupyter notebook. For the benchmark, we tested two LLM models with four different configurations each over six games. Each model was given the same rulebook and design plan for each game and ran the generation pipeline three times per game, which produced 2 models $\times$ 4 configs $\times$ 6 games $\times$ 3 runs = 144 results.
+All testing takes place in the [benchmark notebook](notebooks/benchmark.ipynb) benchmark jupyter notebook. For the benchmark, we tested two LLM models with four different configurations each over six games. Each model was given the same rulebook for each game, while the structured JSON was only generated once per game and reused for all remaining runs to increase efficiency. We then ran the generation pipeline three times per game, which produced 2 models $\times$ 4 configs $\times$ 6 games $\times$ 3 runs = 144 results.
 
 ### Models
 - `qwen3-coder:480b-cloud`
@@ -86,12 +86,12 @@ Using single-stage or multi-stage prolog generation did not seem to make a signi
 ![plot 3](./meta/single_vs_multi_prolog_plot.png)
 
 ### Influence of the design plan
-For most games, the design plan had minimal beneficial to no impact at all, with nim profiting the most of the usage (50.0% vs. 83.3%), whereas a bigger negative influence can be seen for chess, with a 50.0% decrease in success rate from the 66.7% that was achieved without a design plan.
+For most games, the design plan had moderate benefit to no impact at all, with nim profiting the most of the usage (50.0% vs. 83.3%), whereas a bigger negative influence can be seen for chess, with a 50.0% decrease in success rate from the 66.7% that was achieved without a design plan.
 
 ![plot 4](./meta/influence_of_design_plan_plot.png)
 
 ### Most common error sources
-The most common issue by far was the `apply_move` check, which failed in 72.7% of all failed runs (40 out of 55). Note that because the validator re-derives a legal move before testing `aaply_move`, any run that fails the `legal_move` check necessarily also fails the `apply_move` check - the two counts are not independent, and the true `apply_move`-specific failure rate is lower than this number suggests. `legal_move` itself was the primary blocker in 20% (11 out of 55) of failed runs, `render_state` in 5% (3 out of 55) and `game_over` in 2% (1 out of 55).
+The most common issue by far was the `apply_move` check, which failed in 72.7% of all failed runs (40 out of 55). Note that because the validator re-derives a legal move before testing `apply_move`, any run that fails the `legal_move` check necessarily also fails the `apply_move` check - the two counts are not independent, and the true `apply_move`-specific failure rate is lower than this number suggests. `legal_move` itself was the primary blocker in 20% (11 out of 55) of failed runs, `render_state` in 5% (3 out of 55) and `game_over` in 2% (1 out of 55).
 
 ![plot 5](./meta/failed_checks_by_game_plot.png)
 
@@ -118,7 +118,7 @@ An explicit implementation plan improved success rates for structurally simpler 
 - **Additional games or configurations:** Extending the benchmark to games with different structural properties (e.g. hidden information, more than two players) could test whether the observed patterns (multi-stage and design-plan helping simpler games but hurting complex ones) generalize beyond the six games tested here.
 - **Adaptive configuration selection:** Since multi-stage generation and the design plan each help some games and hurt others, a natural next step would be to predict (from the structured JSON alone) which configuration is likely to work best for a given game, rather than fixing one configuration across all games.
 - **Chain-of-thought traceability:** Currently, it is not possible to determine which specific parts of the structured JSON or design plan the model relied on when generating a given piece of Prolog code. Prompting the generator to explicitly justify each predicate with a reference to the corresponding JSON field or design plan step (or analyzing intermediate reasoning traces, if the model exposes them) could help explain *why* certain configurations succeed or fail for a given game, rather than only observing *that* they do.
-- **Improved validation and targeted error fixing:** The current validator only checks reachablity and structural correctness from the initial state (or, in later stages, after a small number of chained moves). A more targeted validation approach - placing the game into a specific, hand-picked state (e.g. a near-endgame position) and verifyinh the correctness of the next 2-3 legal moves and their outcomes - could catch a broader class of logical errors that are not exercised by play starting from the initial state alone.
+- **Improved validation and targeted error fixing:** The current validator only checks reachability and structural correctness from the initial state (or, in later stages, after a small number of chained moves). A more targeted validation approach - placing the game into a specific, hand-picked state (e.g. a near-endgame position) and verifying the correctness of the next 2-3 legal moves and their outcomes - could catch a broader class of logical errors that are not exercised by play starting from the initial state alone.
 
 ## Conclusion
 This practical explored how well different LLM configurations can translate natural language board game rules into executable, playable SWI-Prolog code. Across 144 benchmark runs spanning two models, four configurations and six games, o4-mini substantially outperformed qwen3-coder in both success rate and consistency, while chess proved to be the hardest game across nearly every configuration tested. Neither multi-stage generation nor the design plan step produced a universal improvement; both helped on structurally simpler games while hurting on more complex ones, suggesting that the ideal generation strategy depends on the game being implemented rather than being fixed in advance.
@@ -134,14 +134,16 @@ While the current benchmark provides a solid basis for comparing LLM configurati
 - **[Ollama](https://ollama.com)**: Required only if you want to use local models (or ollama cloud models, e.g. `qwen3-coder:480b-cloud`) instead of / alongside the OpenAI API
 - An **OpenAI API key**: Required only if you want to use models from OpenAI
 
+The default application configuration uses both services: Ollama with `gemma4:31b-cloud` for rule generation and verification, and OpenAI with `o4-mini` for JSON structuring and Prolog generation. Therefore, the default setup requires a working Ollama installation with access to `gemma4:31b-cloud` and a valid OpenAI API key. The model and backend settings can be changed in `config.py`.
+
 ### High-level dependencies
 - `streamlit`: Web frontend for game generation and gameplay
 - `ollama`: Python client for local model access
-- `openai`: Pythong client for OpenAI API access
+- `openai`: Python client for OpenAI API access
 - `plotly`: Result visualization in the benchmark notebook
 - `jupyter`: For running the benchmark notebooks
 
-(See `requirements.txt` for the full list)
+(See `requirements.txt` for the full dependency list)
 
 ### Setup
 1. Clone the repository:
@@ -164,23 +166,23 @@ pip install -r requirements.txt
 4. Set up model access:
 - For OpenAI models: Create a `.env`-file with the Key-Value pair:
 ```bash
-OPEN_API_KEY="YourKeyHere"
+OPENAI_API_KEY="YourKeyHere"
 ```
 
-- For local models via Ollama: install Ollama, then pull the required model(s), e.g.:
+- For the default Ollama configuration: install Ollama, then make sure the configured model is available, e.g.:
 ```bash
-ollama pull qwen3-coder:480b-cloud
+ollama pull gemma4:31b-cloud
 ```
 
 ### Running the Streamlit app
 ```bash
-streamllit run app.py
+streamlit run app.py
 ```
 
 Enter a game name or paste custom game rules to generate a playable implementation, or upload an existing `.pl` file to play directly.
 
 ### Running the benchmark
-Open `notebooks/benchmark.ipynb` and run all cells. The benchmark uses skip / resume logic based on meta files in `results/meta/{game}/`, so interrupted runs can be resumed without repeating completed configurations.
+Open `notebooks/benchmark.ipynb` and run all cells. The benchmark uses skip / resume logic based on meta files in `./testing/results/meta/{game}/`, so interrupted runs can be resumed without repeating completed configurations.
 
 ## License & Contact
 This project is licensed under (---) License - see [LICENSE](LICENSE) for details. // TODO \
