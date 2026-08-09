@@ -1,17 +1,38 @@
 import streamlit as st
 
 
+def _render_navigation():
+    failed = st.session_state.get("pipeline_failed", False)
+    col_back, col_play, _ = st.columns([1, 1, 4])
+
+    with col_back:
+        if st.button("Back to menu", key="back_to_menu"):
+            st.session_state["phase"] = "input"
+            st.session_state["pipeline_failed"] = False
+            st.session_state["pipeline_failure_message"] = None
+            st.session_state["pipeline_outputs"] = {}
+            st.rerun()
+
+    with col_play:
+        if st.button("Play", disabled=failed, key="play_generated_game"):
+            st.session_state["phase"] = "playing"
+            st.rerun()
+
+
 def render():
     col_title, col_settings = st.columns([6, 1])
     
     with col_title:
         st.title("ProloGame")
-        st.caption(f"Generation complete.")
+        if st.session_state.get("pipeline_failed", False):
+            st.caption("Generation failed. Review the output produced before the failure.")
+        else:
+            st.caption("Generation complete.")
     
     st.divider()
     
     outputs = st.session_state.get("pipeline_outputs", {})
-    
+
     tab_labels = []
     if "rulebook" in outputs: tab_labels.append("Rulebook")
     if "verification" in outputs: tab_labels.append("Rule validation")
@@ -21,6 +42,8 @@ def render():
     
     if not tab_labels:
         st.info("No pipeline output available.")
+        st.divider()
+        _render_navigation()
         return
     
     tabs = st.tabs(tab_labels)
@@ -55,10 +78,7 @@ def render():
     if "prolog_code" in outputs:
         with tabs[tab_index]:
             st.code(outputs["prolog_code"], language="prolog")
-    
-    st.divider()
 
-    if st.button("Play"):
-        st.session_state["phase"] = "playing"
-        st.rerun()
+    st.divider()
+    _render_navigation()
     

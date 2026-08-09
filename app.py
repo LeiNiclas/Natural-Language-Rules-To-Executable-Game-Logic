@@ -24,6 +24,12 @@ def _init_state():
         "show_pipeline_output": False,
         "use_design_plan": config.PROLOG_USE_DESIGN_PLAN,
         "use_multistage": config.PROLOG_USE_MULTISTAGE,
+        "show_pipeline_output_widget": False,
+        "use_design_plan_widget": config.PROLOG_USE_DESIGN_PLAN,
+        "use_multistage_widget": config.PROLOG_USE_MULTISTAGE,
+        "rule_gen_backend": config.BACKEND_RULE_GENERATOR,
+        "prolog_gen_backend": config.BACKEND_PROLOG_GENERATOR,
+        "show_generation_details": False,
         "pipeline_failed": False
     }
     

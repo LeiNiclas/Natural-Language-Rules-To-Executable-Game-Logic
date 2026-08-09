@@ -9,12 +9,23 @@ import src.pipeline.prolog_composer as prolog_gen_multi
 import src.pipeline.prolog_generator as prolog_gen_single
 
 
+def _fail_pipeline(message: str, status=None) -> None:
+    if status is not None:
+        status.update(label=message, state="error")
+
+    st.session_state["phase"] = "input"
+    st.session_state["pipeline_failed"] = True
+    st.session_state["pipeline_failure_message"] = message
+    st.rerun()
+
+
 def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
     st.session_state["phase"] = "generating"
     st.session_state["pipeline_outputs"] = {}
+    st.session_state["pipeline_failed"] = False
 
-    config.PROLOG_USE_DESIGN_PLAN = st.session_state["use_design_plan"]
-    config.PROLOG_USE_MULTISTAGE = st.session_state["use_multistage"]
+    config.PROLOG_USE_DESIGN_PLAN = st.session_state["use_design_plan_widget"]
+    config.PROLOG_USE_MULTISTAGE = st.session_state["use_multistage_widget"]
     prolog_gen = prolog_gen_multi if config.PROLOG_USE_MULTISTAGE else prolog_gen_single
     
     with st.status("Generating game...", expanded=True) as status:
@@ -26,10 +37,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
             st.session_state["pipeline_outputs"]["rulebook"] = rulebook
             
             if not ok:
-                status.update(label="Rulebook generation failed after all retries.", state="error")
-                st.session_state["phase"] = "input"
-                st.session_state["pipeline_failed"] = True
-                return
+                _fail_pipeline("Rulebook generation failed after all retries.", status)
         
         status.update(label="Rules are looking good...", expanded=True)
         st.write("Structuring rules as JSON...")
@@ -37,10 +45,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
         st.session_state["pipeline_outputs"]["structured_json"] = structured
         
         if not ok:
-            status.update(label="Could not parse structured JSON.", state="error")
-            st.session_state["phase"] = "input"
-            st.session_state["pipeline_failed"] = True
-            return
+            _fail_pipeline("Could not parse structured JSON.", status)
         
         status.update(label="Working on the prolog code...", expanded=True)
         st.write("Generating prolog code...")
@@ -49,10 +54,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
         st.session_state["pipeline_outputs"]["prolog_code"] = code
         
         if code is None:
-            status.update(label="Prolog generation failed after all retries.", state="error")
-            st.session_state["phase"] = "input"
-            st.session_state["pipeline_failed"] = True
-            return
+            _fail_pipeline("Prolog generation failed after all retries.", status)
         
         game_name = structured.get("game_name", user_input)
         safe_name = game_name.lower().replace(" ", "_")
@@ -71,10 +73,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
     initial = engine.get_initial_state(pl_file)
     
     if initial is None:
-        st.error("Could not retrieve initial game state from Prolog")
-        st.session_state["phase"] = "input"
-        st.session_state["pipeline_failed"] = True
-        return
+        _fail_pipeline("Could not retrieve initial game state from Prolog.")
 
     st.session_state["pl_file"] = pl_file
     st.session_state["game_name"] = game_name
@@ -83,7 +82,7 @@ def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
     st.session_state["move_history"] = []
     st.session_state["winner"] = None
     
-    if st.session_state.get("show_pipeline_output"):
+    if st.session_state.get("show_pipeline_output_widget"):
         st.session_state["phase"] = "pipeline_review"
     else:
         st.session_state["phase"] = "playing"
@@ -140,7 +139,7 @@ def _render_settings_popover():
                 "Model",
                 rule_models,
                 index=rule_models.index(config.MODEL_RULE_GENERATOR) if config.MODEL_RULE_GENERATOR in rule_models else 0,
-                key="rule_gen_model"
+                key=f"rule_gen_model_{rule_backend}"
             )
             config.BACKEND_RULE_GENERATOR = rule_backend
 
@@ -161,24 +160,24 @@ def _render_settings_popover():
                 "Model",
                 prolog_models,
                 index=prolog_models.index(config.MODEL_PROLOG_GENERATOR) if config.MODEL_PROLOG_GENERATOR in prolog_models else 0,
-                key="prolog_gen_model"
+                key=f"prolog_gen_model_{prolog_backend}"
             )
             config.BACKEND_PROLOG_GENERATOR = prolog_backend
 
         st.divider()
         st.markdown("**Debug**")
 
-        st.session_state["show_pipeline_output"] = st.checkbox(
+        st.checkbox(
             "Show pipeline output",
-            value=st.session_state.get("show_pipeline_output", False)
+            key="show_pipeline_output_widget"
         )
-        st.session_state["use_design_plan"] = st.checkbox(
+        st.checkbox(
             "Use design plan",
-            value=st.session_state.get("use_design_plan", config.PROLOG_USE_DESIGN_PLAN)
+            key="use_design_plan_widget"
         )
-        st.session_state["use_multistage"] = st.checkbox(
+        st.checkbox(
             "Use multi-stage generation",
-            value=st.session_state.get("use_multistage", config.PROLOG_USE_MULTISTAGE)
+            key="use_multistage_widget"
         )
 
 
@@ -196,8 +195,11 @@ def render():
     st.divider()
     
     if st.session_state["pipeline_failed"]:
-        if st.button("Show generation details"):
-            st.session_state["pipeline_failed"] = False
+        st.error(st.session_state.get(
+            "pipeline_failure_message",
+            "Generation failed. Inspect the generated output before trying again."
+        ))
+        if st.button("Show generation details", key="show_generation_details"):
             st.session_state["phase"] = "pipeline_review"
             st.rerun()
         
