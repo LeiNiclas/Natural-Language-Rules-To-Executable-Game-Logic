@@ -16,14 +16,16 @@ BACKEND_JSON_STRUCTURER = "openai"
 MODEL_JSON_STRUCTURER   = "o4-mini"
 
 BACKEND_PROLOG_GENERATOR    = "openai"
-MODEL_PROLOG_GENERATOR      = "o4-mini" # qwen3-coder:480b-cloud
+MODEL_PROLOG_GENERATOR      = "o4-mini"
 
 # Add new models to the provider they belong to. The Streamlit settings UI
 # builds its provider and model selectors from this catalog.
+# NOTE: We originally used qwen3-coder:480b-cloud, which has since been retired.
+#       As a replacement, we provide gpt-oss:120b-cloud as an alternative.
 MODEL_CATALOG = {
 	"ollama": [
 		"gemma4:31b-cloud",
-		"qwen3-coder:480b-cloud",
+        "gpt-oss:120b-cloud"  
 	],
 	"openai": [
 		"gpt-4o",

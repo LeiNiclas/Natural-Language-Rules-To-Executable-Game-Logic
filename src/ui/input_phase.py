@@ -135,11 +135,18 @@ def _render_settings_popover():
                 key="rule_gen_backend"
             )
             rule_models = config.MODEL_CATALOG[rule_backend]
+            rule_model_index = (
+                rule_models.index(config.MODEL_RULE_GENERATOR)
+                if config.MODEL_RULE_GENERATOR in rule_models else 0
+            )
+            rule_model_key = f"rule_gen_model_{rule_backend}"
+            if st.session_state.get(rule_model_key) not in rule_models:
+                st.session_state[rule_model_key] = rule_models[rule_model_index]
             config.MODEL_RULE_GENERATOR = st.selectbox(
                 "Model",
                 rule_models,
-                index=rule_models.index(config.MODEL_RULE_GENERATOR) if config.MODEL_RULE_GENERATOR in rule_models else 0,
-                key=f"rule_gen_model_{rule_backend}"
+                index=rule_model_index,
+                key=rule_model_key
             )
             config.BACKEND_RULE_GENERATOR = rule_backend
 
@@ -156,11 +163,18 @@ def _render_settings_popover():
                 key="prolog_gen_backend"
             )
             prolog_models = config.MODEL_CATALOG[prolog_backend]
+            prolog_model_index = (
+                prolog_models.index(config.MODEL_PROLOG_GENERATOR)
+                if config.MODEL_PROLOG_GENERATOR in prolog_models else 0
+            )
+            prolog_model_key = f"prolog_gen_model_{prolog_backend}"
+            if st.session_state.get(prolog_model_key) not in prolog_models:
+                st.session_state[prolog_model_key] = prolog_models[prolog_model_index]
             config.MODEL_PROLOG_GENERATOR = st.selectbox(
                 "Model",
                 prolog_models,
-                index=prolog_models.index(config.MODEL_PROLOG_GENERATOR) if config.MODEL_PROLOG_GENERATOR in prolog_models else 0,
-                key=f"prolog_gen_model_{prolog_backend}"
+                index=prolog_model_index,
+                key=prolog_model_key
             )
             config.BACKEND_PROLOG_GENERATOR = prolog_backend
 
