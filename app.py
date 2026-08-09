@@ -1,6 +1,7 @@
 import os
 import streamlit as st
 import sys
+import config
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -21,7 +22,8 @@ def _init_state():
         "design_plan": None,
         "pipeline_outputs": {},
         "show_pipeline_output": False,
-        "use_design_plan": True,
+        "use_design_plan": config.PROLOG_USE_DESIGN_PLAN,
+        "use_multistage": config.PROLOG_USE_MULTISTAGE,
         "pipeline_failed": False
     }
     

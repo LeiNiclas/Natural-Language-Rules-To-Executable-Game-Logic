@@ -134,7 +134,7 @@ While the current benchmark provides a solid basis for comparing LLM configurati
 - **[Ollama](https://ollama.com)**: Required only if you want to use local models (or ollama cloud models, e.g. `qwen3-coder:480b-cloud`) instead of / alongside the OpenAI API
 - An **OpenAI API key**: Required only if you want to use models from OpenAI
 
-The default application configuration uses both services: Ollama with `gemma4:31b-cloud` for rule generation and verification, and OpenAI with `o4-mini` for JSON structuring and Prolog generation. Therefore, the default setup requires a working Ollama installation with access to `gemma4:31b-cloud` and a valid OpenAI API key. The model and backend settings can be changed in `config.py`.
+The default application configuration uses both services: Ollama with `gemma4:31b-cloud` for rule generation and verification, and OpenAI with `o4-mini` for JSON structuring and Prolog generation. Therefore, the default setup requires a working Ollama installation with access to `gemma4:31b-cloud` and a valid OpenAI API key. The provider and model for rule and Prolog generation can be changed in the app's **Settings** menu. Contributors can add models to the provider-specific `MODEL_CATALOG` in `config.py`.
 
 ### High-level dependencies
 - `streamlit`: Web frontend for game generation and gameplay

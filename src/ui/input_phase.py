@@ -5,15 +5,17 @@ import config
 import os
 import tempfile
 
-if config.PROLOG_USE_MULTISTAGE:
-    import src.pipeline.prolog_composer as prolog_gen
-else:
-    import src.pipeline.prolog_generator as prolog_gen
+import src.pipeline.prolog_composer as prolog_gen_multi
+import src.pipeline.prolog_generator as prolog_gen_single
 
 
 def _run_pipeline(user_input : str, skip_rulebook : bool = False) -> None:
     st.session_state["phase"] = "generating"
     st.session_state["pipeline_outputs"] = {}
+
+    config.PROLOG_USE_DESIGN_PLAN = st.session_state["use_design_plan"]
+    config.PROLOG_USE_MULTISTAGE = st.session_state["use_multistage"]
+    prolog_gen = prolog_gen_multi if config.PROLOG_USE_MULTISTAGE else prolog_gen_single
     
     with st.status("Generating game...", expanded=True) as status:
         if skip_rulebook:
@@ -113,8 +115,10 @@ def _load_from_file(uploaded_file, game_name : str):
 
 
 def _render_settings_popover():
-    rule_gen_models = ["gemma4:31b-cloud", "gpt-4o", "gpt-4o-mini", "o4-mini"]
-    prolog_gen_models = ["gemma4:31b-cloud", "gpt-4o", "gpt-4o-mini", "o4-mini"]
+    providers = list(config.MODEL_CATALOG)
+
+    def default_provider_index(backend):
+        return providers.index(backend) if backend in providers else 0
 
     with st.popover("Settings"):
         st.markdown("**Models**")
@@ -124,26 +128,42 @@ def _render_settings_popover():
         with col1:
             st.caption("Rule generator")
         with col2:
-            selected = st.selectbox(
-                "rule_gen_model",
-                rule_gen_models,
-                index=rule_gen_models.index(config.MODEL_RULE_GENERATOR) if config.MODEL_RULE_GENERATOR in rule_gen_models else 0,
-                label_visibility="collapsed"
+            rule_backend = st.selectbox(
+                "Provider",
+                providers,
+                index=default_provider_index(config.BACKEND_RULE_GENERATOR),
+                format_func=str.title,
+                key="rule_gen_backend"
             )
-            config.MODEL_RULE_GENERATOR = selected
+            rule_models = config.MODEL_CATALOG[rule_backend]
+            config.MODEL_RULE_GENERATOR = st.selectbox(
+                "Model",
+                rule_models,
+                index=rule_models.index(config.MODEL_RULE_GENERATOR) if config.MODEL_RULE_GENERATOR in rule_models else 0,
+                key="rule_gen_model"
+            )
+            config.BACKEND_RULE_GENERATOR = rule_backend
 
         col1, col2 = st.columns([2, 3])
         
         with col1:
             st.caption("Prolog generator")
         with col2:
-            selected = st.selectbox(
-                "prolog_gen_model",
-                prolog_gen_models,
-                index=prolog_gen_models.index(config.MODEL_PROLOG_GENERATOR) if config.MODEL_PROLOG_GENERATOR in prolog_gen_models else 0,
-                label_visibility="collapsed"
+            prolog_backend = st.selectbox(
+                "Provider",
+                providers,
+                index=default_provider_index(config.BACKEND_PROLOG_GENERATOR),
+                format_func=str.title,
+                key="prolog_gen_backend"
             )
-            config.MODEL_PROLOG_GENERATOR = selected
+            prolog_models = config.MODEL_CATALOG[prolog_backend]
+            config.MODEL_PROLOG_GENERATOR = st.selectbox(
+                "Model",
+                prolog_models,
+                index=prolog_models.index(config.MODEL_PROLOG_GENERATOR) if config.MODEL_PROLOG_GENERATOR in prolog_models else 0,
+                key="prolog_gen_model"
+            )
+            config.BACKEND_PROLOG_GENERATOR = prolog_backend
 
         st.divider()
         st.markdown("**Debug**")
@@ -155,6 +175,10 @@ def _render_settings_popover():
         st.session_state["use_design_plan"] = st.checkbox(
             "Use design plan",
             value=st.session_state.get("use_design_plan", config.PROLOG_USE_DESIGN_PLAN)
+        )
+        st.session_state["use_multistage"] = st.checkbox(
+            "Use multi-stage generation",
+            value=st.session_state.get("use_multistage", config.PROLOG_USE_MULTISTAGE)
         )
 
 

@@ -18,6 +18,20 @@ MODEL_JSON_STRUCTURER   = "o4-mini"
 BACKEND_PROLOG_GENERATOR    = "openai"
 MODEL_PROLOG_GENERATOR      = "o4-mini" # qwen3-coder:480b-cloud
 
+# Add new models to the provider they belong to. The Streamlit settings UI
+# builds its provider and model selectors from this catalog.
+MODEL_CATALOG = {
+	"ollama": [
+		"gemma4:31b-cloud",
+		"qwen3-coder:480b-cloud",
+	],
+	"openai": [
+		"gpt-4o",
+		"gpt-4o-mini",
+		"o4-mini",
+	],
+}
+
 # Pipeline settings
 RULEBOOK_MAX_RETRIES    = 5 # How many times to retry rulebook generation on validation failure
 PROLOG_MAX_RETRIES      = 5 # How many times to retry Prolog generation on validation failure
