@@ -146,12 +146,10 @@ The default application configuration uses both services: Ollama with `gemma4:31
 (See `requirements.txt` for the full dependency list)
 
 ### Setup
-1. Clone the repository:
-```bash
-git clone [repo-url]
-cd xxx
-// TBD
-```
+1. Clone the repository
+git clone <repo-url> 
+cd <repo-name>
+
 
 2. Install SWI-Prolog (see link above) and confirm it is on your `PATH`:
 ```bash
@@ -185,7 +183,7 @@ Enter a game name or paste custom game rules to generate a playable implementati
 Open `notebooks/benchmark.ipynb` and run all cells. The benchmark uses skip / resume logic based on meta files in `./testing/results/meta/{game}/`, so interrupted runs can be resumed without repeating completed configurations.
 
 ## License & Contact
-This project is licensed under (---) License - see [LICENSE](LICENSE) for details. // TODO \
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details. \
 Feel free to reach out with any questions: \
 niclas.leinen@stud.uni-heidelberg.de \
 mohammad.khorrami@stud.uni-heidelberg.de
