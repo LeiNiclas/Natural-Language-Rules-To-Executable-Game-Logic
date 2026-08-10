@@ -22,6 +22,8 @@ For example, LLMs are trained primarily on imperative and functional languages, 
 ## Pipeline architecture
 The generation pipeline consists of the following steps: (Optional: Rule generation &rarr; Rule verification &rarr;) JSON structuring &rarr; (Optional: Design plan &rarr;) Prolog generation &rarr; validation / retry loop.
 
+![graph 1](./meta/pipeline_structure_graph.png)
+
 ### 0. Rule generation / verification (Optional)
 These steps are only used if the input is not already a rulebook, i.e. when the user provides only the name of a game. In the generation step, the chosen LLM generates natural language rules for the given game (if it recognizes the name); in the verification step, a (possibly different) LLM checks the completeness and correctness of the generated rules. If the rules are found to be invalid, a corrected version is proposed and re-verified up to a configurable maximum number of retries.
 
@@ -147,9 +149,10 @@ The default application configuration uses both services: Ollama with `gemma4:31
 
 ### Setup
 1. Clone the repository
+```bash
 git clone <repo-url> 
 cd <repo-name>
-
+```
 
 2. Install SWI-Prolog (see link above) and confirm it is on your `PATH`:
 ```bash
